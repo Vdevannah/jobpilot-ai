@@ -1,11 +1,23 @@
 from src.greenhouse import get_jobs
 
 
-keywords = [
-    "data",
-    "analyst",
+target_roles = [
+    "data engineer",
+    "data scientist",
+    "data analyst",
     "analytics",
-    "business intelligence"
+    "business intelligence",
+    "business analyst",
+    "medicinal chemist",
+    "senior scientist",
+    "process chemist",
+    "process scientist",
+    "senior research scientist",
+    "principal scientist",
+    "senior chemist",
+    "organic chemist"
 ]
 
-get_jobs("airbnb", keywords)
+jobs = get_jobs("airbnb", target_roles)
+
+print("Total matching jobs:", len(jobs))
