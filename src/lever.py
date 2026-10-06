@@ -3,31 +3,30 @@ import requests
 from src.utils import is_us_location, matches_target_role
 
 
-def get_jobs(company, target_roles):
-    url = f"https://boards-api.greenhouse.io/v1/boards/{company}/jobs"
+def get_lever_jobs(site, company_name, target_roles):
+    url = f"https://api.lever.co/v0/postings/{site}?mode=json"
 
     try:
         response = requests.get(url)
         response.raise_for_status()
-        data = response.json()
+        jobs = response.json()
     except requests.RequestException as error:
-        print(f"Greenhouse API error for {company}: {error}")
+        print(f"Lever API error for {company_name}: {error}")
         return []
 
-    jobs = data["jobs"]
     matching_jobs = []
 
     for job in jobs:
-        title = job["title"]
-        location = job["location"]["name"]
+        title = job["text"]
+        location = job["categories"]["location"]
 
         if is_us_location(location) and matches_target_role(title, target_roles):
             normalized_job = {
-                "title": job["title"],
-                "company": job["company_name"],
+                "title": title,
+                "company": company_name,
                 "location": location,
-                "url": job["absolute_url"],
-                "source": "greenhouse"
+                "url": job["hostedUrl"],
+                "source": "lever"
             }
             matching_jobs.append(normalized_job)
 
