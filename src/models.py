@@ -1,4 +1,4 @@
-from sqlalchemy import String, UniqueConstraint
+from sqlalchemy import String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -23,3 +23,4 @@ class Job(Base):
     location: Mapped[str] = mapped_column(String(255), nullable=False)
     url: Mapped[str] = mapped_column(String(1000), nullable=False)
     source: Mapped[str] = mapped_column(String(50), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)

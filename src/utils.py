@@ -1,3 +1,7 @@
+from html import unescape
+from html.parser import HTMLParser
+
+
 def is_us_location(location):
     us_states = {
         "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
@@ -66,3 +70,34 @@ def deduplicate_jobs(jobs):
             unique_jobs.append(job)
 
     return unique_jobs
+
+
+def clean_html_text(text):
+    if not text:
+        return ""
+
+    class TextExtractor(HTMLParser):
+        block_tags = {
+            "address", "article", "blockquote", "dd", "div", "dl", "dt",
+            "h1", "h2", "h3", "h4", "h5", "h6", "li", "ol", "p",
+            "section", "ul",
+        }
+
+        def __init__(self):
+            super().__init__()
+            self.parts = []
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "br" or tag in self.block_tags:
+                self.parts.append(" ")
+
+        def handle_endtag(self, tag):
+            if tag in self.block_tags:
+                self.parts.append(" ")
+
+        def handle_data(self, data):
+            self.parts.append(data)
+
+    parser = TextExtractor()
+    parser.feed(unescape(text))
+    return " ".join("".join(parser.parts).split())

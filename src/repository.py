@@ -19,6 +19,9 @@ def save_jobs(jobs):
             )
 
             if existing_job is not None:
+                description = job_data.get("description", "")
+                if not existing_job.description and description:
+                    existing_job.description = description
                 continue
 
             job = Job(
@@ -27,6 +30,7 @@ def save_jobs(jobs):
                 location=job_data["location"],
                 url=job_data["url"],
                 source=job_data["source"],
+                description=job_data.get("description", ""),
             )
             session.add(job)
             added_count += 1

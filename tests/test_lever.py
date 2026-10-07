@@ -11,6 +11,16 @@ def test_get_lever_jobs_filters_and_normalizes_jobs():
             "text": "Data Engineer",
             "categories": {"location": "Atlanta, Georgia"},
             "hostedUrl": "https://example.com/data-engineer",
+            "descriptionPlain": "Build and maintain reliable data pipelines.",
+            "lists": [
+                {
+                    "text": "Skill Set:",
+                    "content": (
+                        "<ul><li>Python and SQL</li>"
+                        "<li>3+ years of experience</li></ul>"
+                    ),
+                }
+            ],
         },
         {
             "text": "Customer Success Manager",
@@ -40,6 +50,10 @@ def test_get_lever_jobs_filters_and_normalizes_jobs():
             "location": "Atlanta, Georgia",
             "url": "https://example.com/data-engineer",
             "source": "lever",
+            "description": (
+                "Build and maintain reliable data pipelines. Skill Set: "
+                "Python and SQL 3+ years of experience"
+            ),
         }
     ]
     mock_get.assert_called_once_with(
