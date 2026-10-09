@@ -151,6 +151,10 @@ activemq-data/
 
 # Environments
 .env
+.env.*
+# Local-only personal resumes, extracted text, and privacy previews
+private_resumes/
+private_resume_previews/
 .envrc
 .venv
 env/

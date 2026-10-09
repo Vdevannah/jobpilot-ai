@@ -1,8 +1,38 @@
 """Check structured evidence without inferring employment or combining tracks."""
 
 from math import isfinite
+import re
 
+from src.ai.job_track_classifier import classify_scientific_ai
 from src.ai.schemas import CriticReport, JobAnalysis, ResumeAnalysis
+
+
+def _normalize(text: str) -> str:
+    text = re.sub(r"\bph\.?\s*d\.?\b", "phd", text.casefold())
+    text = re.sub(r"[^\w+#]+", " ", text).strip()
+    text = re.sub(r"^(?:expertise|experience|proficiency) (?:in|with) ", "", text)
+    return text
+
+
+def _skill(text: str) -> str:
+    text = _normalize(text)
+    aliases = {
+        "sar": "sar", "structure activity relationship": "sar",
+        "structure activity relationships": "sar", "sar analysis": "sar",
+        "structure activity relationship analysis": "sar",
+        "protac": "protac", "protacs": "protac",
+        "proteolysis targeting chimera": "protac", "proteolysis targeting chimeras": "protac",
+        "tpd": "tpd", "targeted protein degradation": "tpd",
+    }
+    return aliases.get(text, text)
+
+
+def _is_education(text: str) -> bool:
+    return bool(re.match(r"^(?:phd|doctorate|doctor of philosophy|bachelor|master)\b", _normalize(text)))
+
+
+def _is_experience(text: str) -> bool:
+    return bool(re.search(r"\b\d+(?:\.\d+)?\s*\+?\s*years?\b", text.casefold()))
 
 
 class CriticAgent:
@@ -19,6 +49,13 @@ class CriticAgent:
 
         if job.job_track == "unknown":
             warnings.append("Job track is unknown; a track-specific experience comparison is unsupported.")
+            if classify_scientific_ai(job.required_skills, job.preferred_skills, job.summary):
+                warnings.append(
+                    "Required/preferred skills and summary show combined scientific-domain and "
+                    "computational/AI signals consistent with a Scientific AI / Cheminformatics role; "
+                    "consider human reclassification to scientific_ai. This is a suggestion only and "
+                    "does not change job_track automatically."
+                )
         else:
             years = resume.professional_experience_years.get(job.job_track)
             if years is None:
@@ -36,12 +73,22 @@ class CriticAgent:
 
         if not job.required_skills or any(not skill.strip() for skill in job.required_skills):
             warnings.append("Required job skills are absent or unclear; skill alignment is uncertain.")
-        candidate_skills = {skill.strip().casefold() for skill in resume.skills if skill.strip()}
+        education = [skill for skill in job.required_skills if _is_education(skill)]
+        education.extend(re.findall(r"Required education:\s*([^\n]+?)(?:\.(?:\s|$)|$)", job.summary, re.I))
+        for qualification in dict.fromkeys(education):
+            expected = _normalize(qualification)
+            if not any(expected == _normalize(item) for item in resume.education):
+                warnings.append(f"Required education not evidenced in the resume: {qualification}.")
+        legacy_experience = [skill for skill in job.required_skills if _is_experience(skill)]
+        if legacy_experience and required_years is None:
+            warnings.append("Experience appears in skill fields without a structured minimum; insufficient evidence for comparison.")
+        candidate_skills = {_skill(skill) for skill in resume.skills if skill.strip()}
         if not candidate_skills:
             warnings.append("Candidate skill evidence is missing.")
         missing_skills = sorted({
             skill.strip().casefold() for skill in job.required_skills
-            if skill.strip() and skill.strip().casefold() not in candidate_skills
+            if skill.strip() and not _is_education(skill) and not _is_experience(skill)
+            and _skill(skill) not in candidate_skills
         })
         if missing_skills:
             warnings.append("Required skills not evidenced in the resume: " + ", ".join(missing_skills) + ".")

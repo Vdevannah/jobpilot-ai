@@ -12,8 +12,8 @@ from src.ai.orchestrator import JobPilotOrchestrator
 from src.ai.schemas import CriticReport, ResearchReport, WorkflowReport
 
 
-@pytest.fixture
-def workflow():
+@pytest.fixture(params=["mock", "openai"])
+def workflow(request):
     calls = Mock()
     agents = [Mock(spec=cls) for cls in (
         JobAnalysisAgent, ResumeAnalysisAgent, ResearchAgent, CriticAgent
@@ -28,7 +28,7 @@ def workflow():
     agents[3].analyze.return_value = CriticReport(
         warnings=[], requires_human_review=False, summary="No warnings."
     )
-    return JobPilotOrchestrator(*agents), agents, calls
+    return JobPilotOrchestrator(*agents, analysis_mode=request.param), agents, calls
 
 
 def test_success_and_agent_call_order(workflow):
@@ -38,8 +38,8 @@ def test_success_and_agent_call_order(workflow):
     result = orchestrator.run("  Job description\n", "  Resume text\n")
 
     assert isinstance(result, WorkflowReport)
-    assert result.analysis_mode == "mock"
-    assert result.model_dump()["analysis_mode"] == "mock"
+    assert result.analysis_mode == orchestrator.analysis_mode
+    assert result.model_dump()["analysis_mode"] == orchestrator.analysis_mode
     assert calls.mock_calls == [
         call.job.analyze("  Job description\n"),
         call.resume.analyze("  Resume text\n"),

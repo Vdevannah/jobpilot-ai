@@ -103,3 +103,66 @@ def test_sample_data_cannot_support_real_recommendation():
     report = CriticAgent().analyze(job, resume)
     assert report.requires_human_review
     assert any("mock or sample" in warning for warning in report.warnings)
+
+
+@pytest.mark.parametrize('left,right', [
+    ('SAR', 'structure-activity relationships'),
+    ('structure activity relationship', 'SAR analysis'),
+    ('PROTACs', 'proteolysis-targeting chimeras'),
+    ('proteolysis targeting chimera', 'PROTACs'),
+    ('TPD', 'targeted protein degradation'),
+    ('targeted protein degradation', 'TPD'),
+    ('Structure-Based Drug Design', 'expertise in structure based drug design'),
+])
+def test_explicit_skill_equivalences(job, resume, left, right):
+    job.required_skills = [left]
+    resume.skills = [right]
+    assert CriticAgent().analyze(job, resume).warnings == []
+
+
+def test_original_live_qualification_false_warnings(job, resume):
+    job.job_track = 'pharma'
+    job.minimum_experience_years = 8
+    job.required_skills = ['PhD in Organic Chemistry', '8 years pharmaceutical experience',
+                           'SAR', 'PROTACs', 'small-molecule drug discovery',
+                           'structure-based drug design']
+    resume.education = ['Ph.D. in Organic Chemistry']
+    resume.skills = ['structure-activity relationship', 'proteolysis-targeting chimeras',
+                     'medicinal chemistry']
+    report = CriticAgent().analyze(job, resume)
+    assert report.warnings == [
+        'Required skills not evidenced in the resume: small-molecule drug discovery, structure-based drug design.'
+    ]
+    assert report.requires_human_review
+
+
+@pytest.mark.parametrize('education,missing', [
+    (['PhD in Organic Chemistry'], False), (['PhD in Physics'], True), ([], True),
+])
+def test_explicit_summary_education(job, resume, education, missing):
+    job.summary = 'Required education: PhD in Organic Chemistry. Research role.'
+    resume.education = education
+    report = CriticAgent().analyze(job, resume)
+    assert any('Required education' in warning for warning in report.warnings) is missing
+
+
+def test_preferred_degree_is_not_required(job, resume):
+    job.summary = 'Preferred education: PhD in Organic Chemistry.'
+    resume.education = []
+    assert CriticAgent().analyze(job, resume).warnings == []
+
+
+def test_skill_text_cannot_supply_professional_years(job, resume):
+    job.required_skills = ['Python', '3 years data experience']
+    resume.professional_experience_years = {'pharma': 8.0}
+    resume.skills.append('3 years data experience')
+    report = CriticAgent().analyze(job, resume)
+    assert any('data is missing' in warning for warning in report.warnings)
+    assert not any('Required skills not evidenced' in warning for warning in report.warnings)
+
+
+def test_unstructured_experience_is_not_inferred(job, resume):
+    job.minimum_experience_years = None
+    job.required_skills = ['Python', '3 years data experience']
+    report = CriticAgent().analyze(job, resume)
+    assert any('insufficient evidence' in warning for warning in report.warnings)

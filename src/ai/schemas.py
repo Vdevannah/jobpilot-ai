@@ -11,7 +11,7 @@ class JobAnalysis(BaseModel):
     required_skills: list[str]
     preferred_skills: list[str]
     minimum_experience_years: int | None
-    job_track: Literal["data", "pharma", "unknown"]
+    job_track: Literal["data", "pharma", "scientific_ai", "unknown"]
     summary: str
 
 
@@ -56,4 +56,4 @@ class WorkflowReport(BaseModel):
     critic_report: CriticReport
     requires_human_review: bool
     status: Literal["pending_review"]
-    analysis_mode: Literal["mock"]
+    analysis_mode: Literal["mock", "openai"]
