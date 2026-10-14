@@ -865,3 +865,234 @@ def test_requirements_does_not_affect_ai_review_or_resume_recommendation():
     assert recommendation_response.json()["analysis_mode"] == "mock"
     assert "requirements" not in review_response.json()
     assert "requirements" not in recommendation_response.json()
+
+
+# --- Phase 9B.4: GET /jobs/{job_id}/requirement-comparison ---
+
+from src.ai.candidate_evidence_fixtures import DEFAULT_DEMO_CANDIDATE_ID  # noqa: E402
+
+
+def test_requirement_comparison_structured_description():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION, title="Senior Data Engineer")
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirement-comparison")
+
+    assert response.status_code == 200
+    body = response.json()
+    comparison = body["requirement_comparison"]
+    assert comparison["job_id"] == 1
+    assert comparison["analysis_mode"] == "deterministic"
+    assert comparison["matches"]
+
+
+def test_requirement_comparison_flattened_description():
+    mock_job = _mock_job(description=FLATTENED_DESCRIPTION)
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirement-comparison")
+
+    assert response.status_code == 200
+    comparison = response.json()["requirement_comparison"]
+    skill_matches = [m for m in comparison["matches"] if m["requirement_kind"] == "skill"]
+    assert any(m["requirement_description"] == "python" for m in skill_matches)
+
+
+def test_requirement_comparison_missing_job_id_returns_404():
+    with patch("src.api.get_job_by_id", return_value=None):
+        response = client.get("/jobs/999/requirement-comparison")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Job not found"}
+
+
+def test_requirement_comparison_missing_description_is_valid_and_honest():
+    mock_job = _mock_job(description=None)
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirement-comparison")
+
+    assert response.status_code == 200
+    comparison = response.json()["requirement_comparison"]
+    assert comparison["matches"] == []
+    assert comparison["requires_human_review"] is True
+    assert comparison["status"] == "pending_review"
+    assert any("No job description is available" in note for note in comparison["overall_limitations"])
+
+
+def test_requirement_comparison_blank_description_is_valid_and_honest():
+    mock_job = _mock_job(description="   ")
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirement-comparison")
+
+    assert response.status_code == 200
+    comparison = response.json()["requirement_comparison"]
+    assert comparison["matches"] == []
+
+
+def test_requirement_comparison_real_looking_url_still_uses_fictional_candidate():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION, url="https://realcompany.example.net/jobs/1")
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirement-comparison")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["is_demo_record"] is False
+    assert body["candidate_is_fictional"] is True
+    assert body["comparison_scope"] == "fictional_demo"
+    # A non-demo job URL must never be read as proof the posting is live.
+    assert any("not thereby proven to be currently live" in note for note in body["limitations"])
+
+
+def test_requirement_comparison_example_com_demo_job_labeling():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION, url="https://example.com/jobs/1")
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirement-comparison")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["is_demo_record"] is True
+    assert body["candidate_is_fictional"] is True
+    # Job demo status and candidate fictional status are independent facts.
+    assert body["candidate_id"] == DEFAULT_DEMO_CANDIDATE_ID
+
+
+def test_requirement_comparison_required_vs_preferred_skills():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION)
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirement-comparison")
+
+    matches = response.json()["requirement_comparison"]["matches"]
+    python_match = next(m for m in matches if m["requirement_kind"] == "skill" and m["requirement_description"] == "python")
+    kafka_match = next(m for m in matches if m["requirement_kind"] == "skill" and m["requirement_description"] == "kafka")
+    assert python_match["is_required"] is True
+    assert kafka_match["is_required"] is False
+
+
+def test_requirement_comparison_professional_skill_duration_evidence():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION)
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirement-comparison")
+
+    matches = response.json()["requirement_comparison"]["matches"]
+    python_match = next(m for m in matches if m["requirement_kind"] == "skill" and m["requirement_description"] == "python")
+    assert python_match["status"] == "supported"
+    assert "professional use of 'python'" in python_match["explanation"]
+    assert all(
+        item["source_category"] == "professional_experience" for item in python_match["candidate_evidence"]
+    )
+
+
+def test_requirement_comparison_education_specialization():
+    mock_job = _mock_job(description="Requirements:\n\n- PhD in Organic Chemistry required\n")
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirement-comparison")
+
+    comparison = response.json()["requirement_comparison"]
+    education_match = next(m for m in comparison["matches"] if m["requirement_kind"] == "education")
+    # The fixed demo candidate holds an MS, not a PhD in Organic Chemistry.
+    assert education_match["status"] in ("partially_supported", "not_demonstrated", "requires_review")
+
+
+def test_requirement_comparison_conditional_experience_alternatives():
+    mock_job = _mock_job(description=ALTERNATIVE_EXPERIENCE_DESCRIPTION, title="Senior Scientist")
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirement-comparison")
+
+    comparison = response.json()["requirement_comparison"]
+    experience_matches = [m for m in comparison["matches"] if m["requirement_kind"] == "experience"]
+    assert len(experience_matches) == 2
+    groups = {m["alternative_group"] for m in experience_matches}
+    assert len(groups) == 1 and None not in groups
+
+
+def test_requirement_comparison_unresolved_alternative_groups_surfaced():
+    mock_job = _mock_job(description=ALTERNATIVE_EXPERIENCE_DESCRIPTION, title="Senior Scientist")
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirement-comparison")
+
+    comparison = response.json()["requirement_comparison"]
+    assert "unresolved_alternative_groups" in comparison
+
+
+def test_requirement_comparison_candidate_evidence_provenance():
+    from src.ai.candidate_evidence_fixtures import DEFAULT_DEMO_CANDIDATE
+
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION)
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirement-comparison")
+
+    comparison = response.json()["requirement_comparison"]
+    allowed_claims = {item.claim for item in DEFAULT_DEMO_CANDIDATE.items}
+    for match in comparison["matches"]:
+        for item in match["candidate_evidence"]:
+            assert item["claim"] in allowed_claims
+
+
+def test_requirement_comparison_job_evidence_offsets_are_exact_substrings():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION)
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirement-comparison")
+
+    comparison = response.json()["requirement_comparison"]
+    for match in comparison["matches"]:
+        for ref in match["requirement_evidence"]:
+            if ref["char_start"] is not None:
+                assert STRUCTURED_DESCRIPTION[ref["char_start"]:ref["char_end"]] == ref["quote"]
+
+
+def test_requirement_comparison_does_not_mutate_the_database():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION)
+    with patch("src.api.get_job_by_id", return_value=mock_job) as mock_get_job:
+        client.get("/jobs/1/requirement-comparison")
+        second_response = client.get("/jobs/1/requirement-comparison")
+
+    assert second_response.status_code == 200
+    assert mock_get_job.call_count == 2
+    assert not any(name.startswith(("save", "update", "write", "delete"))
+                   for name in dir(mock_job) if not name.startswith("_"))
+
+
+def test_requirement_comparison_never_calls_openai_or_mock_workflow():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION)
+    with patch("src.api.get_job_by_id", return_value=mock_job), patch(
+        "src.api.create_workflow"
+    ) as workflow_factory:
+        response = client.get("/jobs/1/requirement-comparison")
+
+    assert response.status_code == 200
+    workflow_factory.assert_not_called()
+
+
+def test_requirement_comparison_does_not_affect_existing_endpoints():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION)
+    mock_jobs = [mock_job]
+    with patch("src.api.get_job_by_id", return_value=mock_job), patch(
+        "src.api.get_all_jobs", return_value=mock_jobs
+    ):
+        comparison_response = client.get("/jobs/1/requirement-comparison")
+        requirements_response = client.get("/jobs/1/requirements")
+        review_response = client.get("/jobs/1/ai-review")
+        recommendation_response = client.get("/jobs/1/resume-recommendation")
+        jobs_response = client.get("/jobs")
+        detail_response = client.get("/jobs/1")
+        matches_response = client.get("/matches")
+
+    for response in (
+        comparison_response, requirements_response, review_response,
+        recommendation_response, jobs_response, detail_response, matches_response,
+    ):
+        assert response.status_code == 200
+
+    assert "requirement_comparison" not in requirements_response.json()
+    assert "requirement_comparison" not in review_response.json()
+    assert "requirement_comparison" not in recommendation_response.json()
+
+
+def test_requirement_comparison_does_not_calculate_a_match_score():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION)
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirement-comparison")
+
+    body = response.json()
+    assert "overall_score" not in body
+    assert "match_score" not in body
+    assert "hiring_probability" not in body
+    assert "ats_score" not in body

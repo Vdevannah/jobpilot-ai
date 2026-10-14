@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 from src.ai.job_requirements import JobRequirements
+from src.ai.requirement_matcher import RequirementComparisonResult
 from src.ai.resume_selector import ResumeRecommendation
 from src.ai.schemas import CriticReport, JobAnalysis, ResearchReport
 
@@ -55,3 +56,36 @@ class JobRequirementsResponse(BaseModel):
     requirements: JobRequirements
     is_demo_record: bool
     source: str | None
+
+
+class RequirementComparisonAPIResponse(BaseModel):
+    """GET /jobs/{job_id}/requirement-comparison's response (Phase 9B.4).
+
+    Wraps the Phase 9B requirement_matcher's own self-contained
+    RequirementComparisonResult unchanged -- comparing the job's real,
+    stored description (via extract_job_requirements(), same as
+    JobRequirementsResponse above) against exactly one fixed FICTIONAL
+    CandidateEvidence fixture. This is never a comparison against the
+    user's actual resume; no resume text of any kind is read or processed
+    on this path.
+
+    `candidate_is_fictional`/`candidate_id`/`candidate_label`/
+    `comparison_scope` describe the candidate side of the comparison.
+    `is_demo_record`/`source` describe the JOB side, exactly as in
+    JobRequirementsResponse -- the two facts are deliberately independent:
+    a real, non-demo job can still only ever be compared against this
+    fictional candidate in this endpoint, and `is_demo_record=False` here
+    means only "not a known example.com placeholder", never proof that the
+    posting is still live or accepting applications.
+    """
+
+    model_config = ConfigDict(strict=True)
+
+    requirement_comparison: RequirementComparisonResult
+    candidate_id: str
+    candidate_label: str
+    candidate_is_fictional: Literal[True] = True
+    comparison_scope: Literal["fictional_demo"] = "fictional_demo"
+    is_demo_record: bool
+    source: str | None
+    limitations: list[str]

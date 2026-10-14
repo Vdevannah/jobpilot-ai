@@ -20,10 +20,21 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.ai.api_schemas import AIReviewResponse, JobRequirementsResponse, ResumeRecommendationResponse
+from src.ai.api_schemas import (
+    AIReviewResponse,
+    JobRequirementsResponse,
+    RequirementComparisonAPIResponse,
+    ResumeRecommendationResponse,
+)
+from src.ai.candidate_evidence_fixtures import (
+    DEFAULT_DEMO_CANDIDATE,
+    DEFAULT_DEMO_CANDIDATE_ID,
+    DEFAULT_DEMO_CANDIDATE_LABEL,
+)
 from src.ai.job_requirements import extract_job_requirements
 from src.ai.mock_fixtures import FICTIONAL_RESUME_VARIANTS
 from src.ai.orchestrator import create_workflow
+from src.ai.requirement_matcher import compare_requirements
 from src.candidate import candidate_profile
 from src.demo_record import is_demo_record
 from src.matching import match_job
@@ -64,6 +75,13 @@ MOCK_ANALYSIS_WARNING = (
 MOCK_ANALYSIS_LIMITATION = (
     "Resume evidence is fictional structured fixture data; this is not a verified or personalized recommendation."
 )
+REQUIREMENT_COMPARISON_LIMITATIONS = [
+    "This compares the job posting against a fixed FICTIONAL candidate evidence fixture, not the "
+    "user's actual resume or any real candidate data. No real resume was read, processed, or "
+    "compared on this path.",
+    "A job that is not a known example.com demo record is not thereby proven to be currently live "
+    "or still accepting applications.",
+]
 
 
 def _text_filter_matches(filter_value: str | None, field_value: str | None) -> bool:
@@ -217,6 +235,34 @@ def get_job_requirements(job_id: int):
         requirements=requirements,
         is_demo_record=is_demo_record(job.url),
         source=job.source,
+    )
+
+
+@app.get(
+    "/jobs/{job_id}/requirement-comparison",
+    response_model=RequirementComparisonAPIResponse,
+    responses={404: {"description": "Job not found"}},
+)
+def get_job_requirement_comparison(job_id: int):
+    """Deterministic comparison (src.ai.requirement_matcher) of this job's
+    own extracted requirements against one fixed, fictional CandidateEvidence
+    fixture -- never the user's actual resume. Like /jobs/{job_id}/requirements,
+    this analyzes the job's real stored description, not fixed mock output,
+    but it is still never a live OpenAI call and never writes to the database.
+    """
+    job = get_job_by_id(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    requirements = extract_job_requirements(job.id, job.title, job.description)
+    comparison = compare_requirements(requirements, DEFAULT_DEMO_CANDIDATE)
+    return RequirementComparisonAPIResponse(
+        requirement_comparison=comparison,
+        candidate_id=DEFAULT_DEMO_CANDIDATE_ID,
+        candidate_label=DEFAULT_DEMO_CANDIDATE_LABEL,
+        is_demo_record=is_demo_record(job.url),
+        source=job.source,
+        limitations=REQUIREMENT_COMPARISON_LIMITATIONS,
     )
 
 
