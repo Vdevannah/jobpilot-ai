@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 from src.ai.job_requirements import JobRequirements
+from src.ai.personalized_client import ApplicationAssistance
 from src.ai.requirement_matcher import RequirementComparisonResult
 from src.ai.resume_selector import ResumeRecommendation
 from src.ai.schemas import CriticReport, JobAnalysis, ResearchReport
@@ -89,3 +90,83 @@ class RequirementComparisonAPIResponse(BaseModel):
     is_demo_record: bool
     source: str | None
     limitations: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Phase 9C: personalized, approved-resume-based live analysis. Every model
+# below is additive; none of the response classes above are changed.
+# ---------------------------------------------------------------------------
+
+
+class ResumePreviewRequest(BaseModel):
+    """POST /resume/preview's request. Stateless and local-only -- never
+    calls OpenAI and never persists `resume_text` anywhere; the sanitized
+    `preview` in the response is the only trace, held only in the caller's
+    own memory until they explicitly approve and resubmit it.
+    """
+
+    model_config = ConfigDict(strict=True)
+
+    resume_text: str
+    identifiers: list[str] = []
+
+
+class ResumePreviewResponse(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    preview: str
+
+
+class PersonalizedAnalysisRequest(BaseModel):
+    """POST /jobs/{job_id}/personalized-analysis's request.
+
+    `preview_text` must be the exact sanitized text the user reviewed from
+    a prior /resume/preview call (or a hand-written equivalent) -- the
+    server re-derives approval from `confirmed` in this same request rather
+    than trusting any stored, prior approval state, so approval is always
+    scoped to this one request (see resume_privacy.approve_resume()).
+    `mode` defaults to "mock" so a client must explicitly opt into a live
+    OpenAI request; it is never implied by merely calling this endpoint.
+    """
+
+    model_config = ConfigDict(strict=True)
+
+    preview_text: str
+    confirmed: bool
+    variant: Literal["pharma", "data", "scientific_ai"]
+    include_citations: bool = False
+    mode: Literal["mock", "openai"] = "mock"
+
+
+class PersonalizedAnalysisResponse(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    job_id: int
+    variant: Literal["pharma", "data", "scientific_ai"]
+    variant_matches_job_track: bool | None
+    live_job_analysis: JobAnalysis | None
+    requirement_comparison: RequirementComparisonResult
+    candidate_is_fictional: Literal[False] = False
+    comparison_scope: Literal["personalized"] = "personalized"
+    analysis_mode: Literal["mock", "openai"]
+    requires_human_review: Literal[True] = True
+    status: Literal["pending_review"] = "pending_review"
+    limitations: list[str]
+
+
+class ApplicationAssistanceRequest(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    preview_text: str
+    confirmed: bool
+    variant: Literal["pharma", "data", "scientific_ai"]
+    include_citations: bool = False
+    mode: Literal["mock", "openai"] = "mock"
+
+
+class ApplicationAssistanceResponse(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    job_id: int
+    variant: Literal["pharma", "data", "scientific_ai"]
+    assistance: ApplicationAssistance

@@ -26,12 +26,18 @@ function buildQueryString(params) {
   return query ? `?${query}` : "";
 }
 
-async function request(path, { params } = {}) {
+async function request(path, { params, method = "GET", body } = {}) {
   const url = `${API_BASE_URL}${path}${buildQueryString(params)}`;
 
   let response;
   try {
-    response = await fetch(url, { headers: { Accept: "application/json" } });
+    response = await fetch(url, {
+      method,
+      headers: body !== undefined
+        ? { Accept: "application/json", "Content-Type": "application/json" }
+        : { Accept: "application/json" },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
   } catch (cause) {
     throw new ApiError(
       `Could not reach the JobPilot AI backend at ${API_BASE_URL}.`,
@@ -94,4 +100,37 @@ export function getJobRequirements(jobId) {
 
 export function getJobRequirementComparison(jobId) {
   return request(`/jobs/${encodeURIComponent(jobId)}/requirement-comparison`);
+}
+
+// Phase 9C: personalized analysis against the caller's OWN resume text.
+// Every call here is explicit and user-triggered (via useLazyRequest in the
+// pages below) -- none of these run automatically on page load or when
+// switching jobs, and the raw resume text is never sent anywhere except in
+// the one /resume/preview call the caller makes directly.
+
+export function previewResumeText(resumeText, identifiers = []) {
+  return request("/resume/preview", {
+    method: "POST",
+    body: { resume_text: resumeText, identifiers },
+  });
+}
+
+export function getPersonalizedAnalysis(jobId, { previewText, confirmed, variant, mode, includeCitations = false }) {
+  return request(`/jobs/${encodeURIComponent(jobId)}/personalized-analysis`, {
+    method: "POST",
+    body: {
+      preview_text: previewText, confirmed, variant, mode,
+      include_citations: includeCitations,
+    },
+  });
+}
+
+export function getApplicationAssistance(jobId, { previewText, confirmed, variant, mode, includeCitations = false }) {
+  return request(`/jobs/${encodeURIComponent(jobId)}/application-assistance`, {
+    method: "POST",
+    body: {
+      preview_text: previewText, confirmed, variant, mode,
+      include_citations: includeCitations,
+    },
+  });
 }

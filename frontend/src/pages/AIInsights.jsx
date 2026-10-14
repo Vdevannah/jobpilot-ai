@@ -7,6 +7,7 @@ import JobPicker from "../components/JobPicker";
 import JobContextCard from "../components/JobContextCard";
 import AIResponseMeta from "../components/AIResponseMeta";
 import RequirementComparisonPanel from "../components/RequirementComparisonPanel";
+import PersonalizedAnalysisPanel from "../components/PersonalizedAnalysisPanel";
 import Notice from "../components/Notice";
 import PageHeader from "../components/PageHeader";
 import { LoadingState, ErrorState, EmptyState } from "../components/AsyncState";
@@ -233,6 +234,24 @@ export default function AIInsights() {
           <ErrorState message={comparisonError} />
         ) : (
           <RequirementComparisonPanel comparison={comparisonData} />
+        )}
+      </section>
+
+      <section
+        className="ai-insights__block ai-insights__personalized-section"
+        aria-label="Personalized analysis with your own resume"
+      >
+        <h3>Personalized Analysis (Your Resume)</h3>
+        <p className="ai-insights__personalized-intro">
+          Unlike the sections above, this uses YOUR OWN resume text, which you paste in yourself
+          below -- never read automatically from this computer or any file. Nothing is analyzed,
+          and no OpenAI request is ever made, until you explicitly review the sanitized preview
+          and approve it.
+        </p>
+        {!selectedJobId ? (
+          <EmptyState message="Select a job above before starting a personalized analysis." />
+        ) : (
+          <PersonalizedAnalysisPanel jobId={selectedJobId} />
         )}
       </section>
     </div>

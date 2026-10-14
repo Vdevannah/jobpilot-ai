@@ -54,6 +54,22 @@
   padding: 20px;
 }
 
+.ai-insights__personalized-section {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+}
+
+.ai-insights__personalized-intro {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  max-width: 75ch;
+  margin-bottom: 12px;
+}
+
 .ai-insights__block h3 {
   font-size: var(--fs-lg);
   font-weight: 700;

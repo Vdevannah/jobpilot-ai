@@ -1,11 +1,12 @@
 import Notice from "./Notice";
 import "./RequirementComparisonPanel.css";
 
-// Renders the Phase 9B deterministic comparison of a job's extracted
-// requirements against ONE FIXED FICTIONAL candidate fixture. This is a
-// demonstration of the comparison engine, never a personalized match
-// against the user's own resume -- the persistent banner below is never
-// hidden or made conditional on anything in the response.
+// Renders a Phase 9B/9C requirement comparison. `comparison` carries its own
+// `candidate_is_fictional` flag (true for the Phase 9B.4 fixed-fixture demo,
+// false for a Phase 9C personalized comparison against the caller's own
+// approved resume evidence) -- the banner below always reflects that flag
+// rather than being hidden or skipped, so the two cases stay visually and
+// textually distinguishable at a glance in either mode.
 
 const STATUS_LABELS = {
   supported: "Supported",
@@ -138,15 +139,26 @@ export default function RequirementComparisonPanel({ comparison }) {
   const domainMatches = result.matches.filter((match) => match.requirement_kind === "domain_expertise");
   const experienceMatches = result.matches.filter((match) => match.requirement_kind === "experience");
 
+  const isFictional = comparison.candidate_is_fictional !== false;
+
   return (
     <div className="requirement-comparison-panel">
-      <div className="requirement-comparison-panel__demo-banner">
-        DEMO COMPARISON -- This analysis uses a fictional candidate, not your resume.
-      </div>
+      {isFictional ? (
+        <div className="requirement-comparison-panel__demo-banner">
+          DEMO COMPARISON -- This analysis uses a fictional candidate, not your resume.
+        </div>
+      ) : (
+        <div className="requirement-comparison-panel__personalized-banner">
+          PERSONALIZED ANALYSIS -- Based on the resume text you reviewed and approved.
+        </div>
+      )}
 
-      <p className="requirement-comparison-panel__candidate-label">
-        Fictional candidate: {comparison.candidate_label}
-      </p>
+      {comparison.candidate_label && (
+        <p className="requirement-comparison-panel__candidate-label">
+          {isFictional ? "Fictional candidate: " : ""}
+          {comparison.candidate_label}
+        </p>
+      )}
 
       {comparison.limitations?.map((limitation, index) => (
         <Notice key={index} tone="warning">
