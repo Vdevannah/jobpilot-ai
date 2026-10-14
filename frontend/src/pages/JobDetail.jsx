@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getJobById, getMatches } from "../api/client";
+import { getJobById, getJobRequirements, getMatches } from "../api/client";
 import { useApiQuery } from "../hooks/useApiQuery";
 import ScoreBadge from "../components/ScoreBadge";
 import TrackBadge from "../components/TrackBadge";
@@ -8,6 +8,7 @@ import SkillSummary from "../components/SkillSummary";
 import Notice from "../components/Notice";
 import DemoRecordBadge from "../components/DemoRecordBadge";
 import JobDescription from "../components/JobDescription";
+import JobRequirementsPanel from "../components/JobRequirementsPanel";
 import { LoadingState, ErrorState } from "../components/AsyncState";
 import { BuildingIcon, MapPinIcon, SourceIcon } from "../components/icons";
 import { SCORE_MEANING } from "../utils/scoreTier";
@@ -32,6 +33,11 @@ export default function JobDetail() {
     [jobId],
   );
   const { isLoading: matchesLoading, data: matches } = useApiQuery(() => getMatches(), [jobId]);
+  const {
+    isLoading: requirementsLoading,
+    data: requirementsResponse,
+    error: requirementsError,
+  } = useApiQuery(() => getJobRequirements(jobId), [jobId]);
 
   const match = useMemo(() => {
     if (!matches) return null;
@@ -132,6 +138,17 @@ export default function JobDetail() {
           <Notice tone="warning">
             Job description is unavailable. Match scores may be based on limited information.
           </Notice>
+        )}
+      </section>
+
+      <section className="job-detail__section" aria-label="Extracted requirements">
+        <h3 className="job-detail__section-title">Extracted Requirements</h3>
+        {requirementsLoading ? (
+          <LoadingState label="Extracting requirements from the job description..." />
+        ) : requirementsError ? (
+          <ErrorState message={requirementsError} />
+        ) : (
+          <JobRequirementsPanel requirements={requirementsResponse?.requirements} />
         )}
       </section>
 

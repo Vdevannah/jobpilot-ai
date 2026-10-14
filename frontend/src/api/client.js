@@ -82,3 +82,16 @@ export function getResumeRecommendation(jobId) {
 export function getAIReview(jobId) {
   return request(`/jobs/${encodeURIComponent(jobId)}/ai-review`);
 }
+
+// Phase 9A/9B: deterministic (non-AI) analysis of the job's own stored
+// description. Unlike the Phase 8E mock endpoints above, these never read
+// or process any resume text, so there is no privacy reason to make them
+// explicit/lazy -- callers may fetch them automatically when a job is
+// selected, the same way getJobById() already is.
+export function getJobRequirements(jobId) {
+  return request(`/jobs/${encodeURIComponent(jobId)}/requirements`);
+}
+
+export function getJobRequirementComparison(jobId) {
+  return request(`/jobs/${encodeURIComponent(jobId)}/requirement-comparison`);
+}

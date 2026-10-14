@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getAIReview, getJobs } from "../api/client";
+import { getAIReview, getJobRequirementComparison, getJobs } from "../api/client";
 import { useApiQuery } from "../hooks/useApiQuery";
 import { useLazyRequest } from "../hooks/useLazyRequest";
 import JobPicker from "../components/JobPicker";
 import JobContextCard from "../components/JobContextCard";
 import AIResponseMeta from "../components/AIResponseMeta";
+import RequirementComparisonPanel from "../components/RequirementComparisonPanel";
 import Notice from "../components/Notice";
 import PageHeader from "../components/PageHeader";
 import { LoadingState, ErrorState, EmptyState } from "../components/AsyncState";
@@ -32,6 +33,19 @@ export default function AIInsights() {
 
   const { isLoading: jobsLoading, data: jobs, error: jobsError } = useApiQuery(() => getJobs(), []);
   const { status, data, error, isLoading, run, reset } = useLazyRequest(getAIReview);
+
+  // Deterministic, non-AI comparison (Phase 9B) -- never processes resume
+  // text, so unlike the mock AI review above it refreshes automatically
+  // when the selected job changes, the same way job-specific data loads
+  // elsewhere in the dashboard, rather than waiting for an explicit click.
+  const {
+    isLoading: comparisonLoading,
+    data: comparisonData,
+    error: comparisonError,
+  } = useApiQuery(
+    () => (selectedJobId ? getJobRequirementComparison(selectedJobId) : Promise.resolve(null)),
+    [selectedJobId],
+  );
 
   useEffect(() => {
     reset();
@@ -208,6 +222,19 @@ export default function AIInsights() {
           )}
         </section>
       )}
+
+      <section className="ai-insights__block ai-insights__comparison-section" aria-label="Evidence-based requirement comparison">
+        <h3>Evidence-Based Requirement Comparison</h3>
+        {!selectedJobId ? (
+          <EmptyState message="Select a job above to view its evidence-based requirement comparison." />
+        ) : comparisonLoading ? (
+          <LoadingState label="Comparing job requirements against the demo candidate..." />
+        ) : comparisonError ? (
+          <ErrorState message={comparisonError} />
+        ) : (
+          <RequirementComparisonPanel comparison={comparisonData} />
+        )}
+      </section>
     </div>
   );
 }

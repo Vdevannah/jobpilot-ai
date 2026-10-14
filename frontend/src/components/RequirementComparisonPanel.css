@@ -1,0 +1,188 @@
+.requirement-comparison-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.requirement-comparison-panel__demo-banner {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.01em;
+  color: #ffffff;
+  background: var(--status-serious);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+}
+
+.requirement-comparison-panel__candidate-label {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.requirement-comparison-panel__empty {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.requirement-comparison-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.requirement-comparison-panel__section h4 {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+
+.requirement-comparison-panel__match-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.requirement-comparison-panel__match {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-1);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.requirement-comparison-panel__match-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.requirement-comparison-panel__requirement {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+}
+
+.requirement-comparison-panel__chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.requirement-comparison-panel__chip--required {
+  color: var(--status-serious);
+  background: rgba(234, 122, 58, 0.14);
+}
+
+.requirement-comparison-panel__chip--preferred {
+  color: var(--text-secondary);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+}
+
+.requirement-comparison-panel__status {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.requirement-comparison-panel__status--supported {
+  color: #ffffff;
+  background: var(--status-good);
+}
+
+.requirement-comparison-panel__status--partially-supported {
+  color: #ffffff;
+  background: var(--status-warning);
+}
+
+.requirement-comparison-panel__status--requires-review {
+  color: #ffffff;
+  background: var(--status-serious);
+}
+
+.requirement-comparison-panel__status--not-demonstrated {
+  color: var(--text-secondary);
+  background: var(--border);
+}
+
+.requirement-comparison-panel__explanation {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.requirement-comparison-panel__evidence {
+  font-size: 12px;
+}
+
+.requirement-comparison-panel__evidence summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: var(--fw-medium);
+}
+
+.requirement-comparison-panel__evidence ul {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.requirement-comparison-panel__evidence-category {
+  font-weight: var(--fw-semibold);
+  text-transform: capitalize;
+}
+
+.requirement-comparison-panel__limitations {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.requirement-comparison-panel__alternative-group {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+.requirement-comparison-panel__alternative-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.requirement-comparison-panel__field-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.requirement-comparison-panel__plain-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  list-style: disc;
+  font-size: 12px;
+  color: var(--text-secondary);
+}

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +9,74 @@ const JOB = {
   id: 1, title: "Data Engineer", company: "Acme", location: "New York, NY",
   url: "https://example.com/1", source: "greenhouse",
   description: "Build and maintain data pipelines.",
+};
+
+const REQUIREMENTS_RESPONSE = {
+  requirements: {
+    job_id: 1,
+    job_title: "Data Engineer",
+    career_track: "data",
+    career_track_evidence: [],
+    required_skills: ["python"],
+    required_skills_evidence: { python: [{ quote: "5+ years of Python experience", char_start: 0, char_end: 30 }] },
+    preferred_skills: ["kafka"],
+    preferred_skills_evidence: { kafka: [{ quote: "Experience with Kafka", char_start: 31, char_end: 53 }] },
+    experience_requirements: [
+      { minimum_years: 5.0, education_qualifier: null, is_required: true, alternative_group: null, evidence: [] },
+    ],
+    required_education: ["Bachelor's degree"],
+    required_education_evidence: { "Bachelor's degree": [] },
+    preferred_education: [],
+    preferred_education_evidence: {},
+    responsibilities: ["Build and maintain data pipelines"],
+    responsibilities_evidence: {},
+    domain_expertise: ["data pipeline"],
+    domain_expertise_evidence: {},
+    location_requirement: "This role is fully remote.",
+    remote_allowed: true,
+    location_evidence: [],
+    missing_information: [],
+    ambiguous_information: [],
+    analysis_mode: "deterministic",
+    limitations: ["Extraction is deterministic (keyword/regex-based)."],
+    requires_human_review: true,
+    status: "pending_review",
+  },
+  is_demo_record: false,
+  source: "greenhouse",
+};
+
+const EMPTY_REQUIREMENTS_RESPONSE = {
+  requirements: {
+    job_id: 1,
+    job_title: "Data Engineer",
+    career_track: "unknown",
+    career_track_evidence: [],
+    required_skills: [],
+    required_skills_evidence: {},
+    preferred_skills: [],
+    preferred_skills_evidence: {},
+    experience_requirements: [],
+    required_education: [],
+    required_education_evidence: {},
+    preferred_education: [],
+    preferred_education_evidence: {},
+    responsibilities: [],
+    responsibilities_evidence: {},
+    domain_expertise: [],
+    domain_expertise_evidence: {},
+    location_requirement: null,
+    remote_allowed: null,
+    location_evidence: [],
+    missing_information: ["No job description is available for this posting."],
+    ambiguous_information: [],
+    analysis_mode: "deterministic",
+    limitations: ["Extraction is deterministic (keyword/regex-based)."],
+    requires_human_review: true,
+    status: "pending_review",
+  },
+  is_demo_record: false,
+  source: "greenhouse",
 };
 
 const MATCH = {
@@ -350,6 +418,83 @@ describe("JobDetail", () => {
       expect(
         await screen.findByText("Job description is unavailable. Match scores may be based on limited information."),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("extracted requirements (Phase 9A)", () => {
+    it("loads and displays job-specific required/preferred skills, experience, and education", async () => {
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue(JOB);
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+      const requirementsSpy = vi.spyOn(apiClient, "getJobRequirements").mockResolvedValue(REQUIREMENTS_RESPONSE);
+      renderDetail();
+
+      expect(await screen.findByText("Extracted Requirements")).toBeInTheDocument();
+      expect(requirementsSpy).toHaveBeenCalledWith("1");
+      expect(screen.getByText("python")).toBeInTheDocument();
+      expect(screen.getByText("kafka")).toBeInTheDocument();
+      expect(screen.getByText("5+ years")).toBeInTheDocument();
+      expect(screen.getByText("Bachelor's degree")).toBeInTheDocument();
+      expect(screen.getByText("Build and maintain data pipelines")).toBeInTheDocument();
+    });
+
+    it("labels the extraction as deterministic and requiring human review", async () => {
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue(JOB);
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+      vi.spyOn(apiClient, "getJobRequirements").mockResolvedValue(REQUIREMENTS_RESPONSE);
+      renderDetail();
+
+      expect(await screen.findByText("Deterministic extraction")).toBeInTheDocument();
+      expect(screen.getByText("Requires human review")).toBeInTheDocument();
+    });
+
+    it("lets a user inspect the supporting job-description evidence for a requirement", async () => {
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue(JOB);
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+      vi.spyOn(apiClient, "getJobRequirements").mockResolvedValue(REQUIREMENTS_RESPONSE);
+      renderDetail();
+
+      const pythonItem = (await screen.findByText("python")).closest(".job-requirements-panel__skill-item");
+      const toggle = within(pythonItem).getByText(/show evidence/i);
+      expect(toggle.closest("details")).not.toHaveAttribute("open");
+      await userEvent.click(toggle);
+      expect(toggle.closest("details")).toHaveAttribute("open");
+      expect(screen.getByText(/5\+ years of Python experience/)).toBeVisible();
+    });
+
+    it("shows a missing-information notice and no fabricated requirements when the description is unavailable", async () => {
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue({ ...JOB, description: null });
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+      vi.spyOn(apiClient, "getJobRequirements").mockResolvedValue(EMPTY_REQUIREMENTS_RESPONSE);
+      renderDetail();
+
+      expect(await screen.findByText("No job description is available for this posting.")).toBeInTheDocument();
+      expect(screen.getByText(/no structured requirements could be extracted/i)).toBeInTheDocument();
+    });
+
+    it("shows an error state for the requirements section when the request fails, without blocking the rest of the page", async () => {
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue(JOB);
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+      vi.spyOn(apiClient, "getJobRequirements").mockRejectedValue(
+        new Error("Request to /jobs/1/requirements failed (503): unavailable"),
+      );
+      renderDetail();
+
+      expect(await screen.findByText(JOB.title)).toBeInTheDocument();
+      expect(await screen.findByRole("alert")).toHaveTextContent(/unavailable/i);
+    });
+
+    it("requests requirements for the job in the current route, keyed by that job's own ID", async () => {
+      const requirementsSpy = vi.spyOn(apiClient, "getJobRequirements").mockResolvedValue(REQUIREMENTS_RESPONSE);
+      vi.spyOn(apiClient, "getJobById").mockImplementation((id) => Promise.resolve({ ...JOB, id: Number(id) }));
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+
+      renderDetail("1");
+      await screen.findByText("Extracted Requirements");
+      expect(requirementsSpy).toHaveBeenCalledWith("1");
+
+      requirementsSpy.mockClear();
+      renderDetail("2");
+      await waitFor(() => expect(requirementsSpy).toHaveBeenCalledWith("2"));
     });
   });
 });

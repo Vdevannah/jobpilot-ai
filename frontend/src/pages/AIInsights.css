@@ -46,6 +46,14 @@
   gap: 18px;
 }
 
+.ai-insights__comparison-section {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+}
+
 .ai-insights__block h3 {
   font-size: var(--fs-lg);
   font-weight: 700;
