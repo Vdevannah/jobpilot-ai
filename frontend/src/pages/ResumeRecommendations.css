@@ -1,0 +1,114 @@
+.resume-recommendations {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.resume-recommendations__intro h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.resume-recommendations__result {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.resume-recommendations__job-analysis h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.resume-recommendations__job-analysis p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  max-width: 70ch;
+}
+
+.resume-recommendations__points-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-width: 70ch;
+  margin: 0;
+}
+
+.resume-recommendations__rankings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.resume-recommendations__variant-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.resume-recommendations__variant-card--leader {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-wash);
+}
+
+.resume-recommendations__variant-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.resume-recommendations__variant-header h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.resume-recommendations__score {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.resume-recommendations__reasons,
+.resume-recommendations__limitations,
+.resume-recommendations__overall-limitations {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.resume-recommendations__limitations,
+.resume-recommendations__overall-limitations {
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 6px;
+}
+
+.resume-recommendations__overall-limitations {
+  max-width: 70ch;
+}
+
+@media (max-width: 560px) {
+  .resume-recommendations__rankings {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,29 @@
+.track-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  background: var(--surface-1);
+}
+
+.track-badge--pharma {
+  color: #5b3aa7;
+  background: rgba(74, 58, 167, 0.1);
+  border-color: transparent;
+}
+
+.track-badge--data {
+  color: var(--accent);
+  background: var(--accent-wash);
+  border-color: transparent;
+}
+
+.track-badge--unknown {
+  color: var(--text-muted);
+  font-style: italic;
+}

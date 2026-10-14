@@ -1,0 +1,25 @@
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  margin: 0;
+}
+
+.notice__icon {
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.notice--info {
+  color: var(--text-secondary);
+  background: var(--accent-wash);
+}
+
+.notice--warning {
+  color: #8a5a00;
+  background: rgba(250, 178, 25, 0.14);
+}

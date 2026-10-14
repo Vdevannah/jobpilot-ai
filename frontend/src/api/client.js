@@ -1,0 +1,84 @@
+// Reusable fetch wrapper for the JobPilot AI FastAPI backend.
+//
+// Base URL comes from VITE_API_BASE_URL (set in frontend/.env, see
+// .env.example), defaulting to http://localhost:8000 for local development.
+// Every call surfaces HTTP and network failures as a single ApiError so
+// callers can render one consistent error state.
+
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+export class ApiError extends Error {
+  constructor(message, { status = null, cause = null } = {}) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.cause = cause;
+  }
+}
+
+function buildQueryString(params) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params || {})) {
+    if (value === undefined || value === null || value === "") continue;
+    search.set(key, String(value));
+  }
+  const query = search.toString();
+  return query ? `?${query}` : "";
+}
+
+async function request(path, { params } = {}) {
+  const url = `${API_BASE_URL}${path}${buildQueryString(params)}`;
+
+  let response;
+  try {
+    response = await fetch(url, { headers: { Accept: "application/json" } });
+  } catch (cause) {
+    throw new ApiError(
+      `Could not reach the JobPilot AI backend at ${API_BASE_URL}.`,
+      { cause },
+    );
+  }
+
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const body = await response.json();
+      detail = body?.detail ? JSON.stringify(body.detail) : detail;
+    } catch {
+      // Response body wasn't JSON; fall back to statusText.
+    }
+    throw new ApiError(`Request to ${path} failed (${response.status}): ${detail}`, {
+      status: response.status,
+    });
+  }
+
+  return response.json();
+}
+
+export function getHealth() {
+  return request("/health");
+}
+
+export function getJobs(params = {}) {
+  return request("/jobs", { params });
+}
+
+export function getMatches(params = {}) {
+  return request("/matches", { params });
+}
+
+export function getJobById(jobId) {
+  return request(`/jobs/${encodeURIComponent(jobId)}`);
+}
+
+// Phase 8E mock-only endpoints: fixed sample AI output for demonstration,
+// never a live OpenAI call and never real resume text. Each call is a
+// distinct, explicit request -- callers must trigger these themselves, not
+// as a side effect of loading a page.
+export function getResumeRecommendation(jobId) {
+  return request(`/jobs/${encodeURIComponent(jobId)}/resume-recommendation`);
+}
+
+export function getAIReview(jobId) {
+  return request(`/jobs/${encodeURIComponent(jobId)}/ai-review`);
+}

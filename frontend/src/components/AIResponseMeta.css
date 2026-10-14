@@ -1,0 +1,36 @@
+.ai-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.ai-meta__badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  background: var(--surface-1);
+}
+
+.ai-meta__badge--mock {
+  color: #9a6b00;
+  background: rgba(250, 178, 25, 0.16);
+  border-color: transparent;
+}
+
+.ai-meta__badge--review {
+  color: var(--accent);
+  background: var(--accent-wash);
+  border-color: transparent;
+}
+
+.ai-meta__badge--unavailable {
+  color: var(--text-muted);
+  font-style: italic;
+}

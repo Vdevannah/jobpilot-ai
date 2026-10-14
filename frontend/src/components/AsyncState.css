@@ -1,0 +1,52 @@
+.async-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.async-state--error {
+  color: var(--status-critical);
+  background: rgba(208, 59, 59, 0.08);
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.async-state--empty {
+  color: var(--text-muted);
+  justify-content: center;
+  text-align: center;
+}
+
+.async-state__spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  animation: async-state-spin 700ms linear infinite;
+  flex-shrink: 0;
+}
+
+.async-state__retry {
+  border: 1px solid var(--status-critical);
+  background: transparent;
+  color: var(--status-critical);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.async-state__retry:hover {
+  background: rgba(208, 59, 59, 0.1);
+}
+
+@keyframes async-state-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

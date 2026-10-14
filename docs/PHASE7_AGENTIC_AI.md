@@ -280,3 +280,14 @@ chronology, or factual consistency beyond differing explicit track-year claims.
 Future orchestration should call selection only after discovery and suitability
 evaluation, then present the recommendation for human review without overwriting
 CandidateProfile or changing opportunity scores.
+
+## Phase 8B note: two separate job_track concepts
+
+The dashboard API (`src/api.py`) exposes `job_track` on `GET /matches`, filterable
+via a `job_track` query parameter accepting only `"pharma"` or `"data"`. That value
+comes from `src.matching.determine_job_track` -- simple, deterministic keyword
+matching over a job's title/description (Phase 1-6), unrelated to this document's
+`JobAnalysis.job_track` (Phase 7G.5J added `"scientific_ai"` there; it also allows
+`"unknown"`). The API never merges, cross-references, or silently reconciles the
+two; `GET /jobs` has no job_track parameter at all, since the stored `Job` model
+has no track column -- only `/matches` computes one, by running the matcher.

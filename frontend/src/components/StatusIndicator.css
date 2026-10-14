@@ -1,0 +1,40 @@
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.status__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.status--loading .status__dot {
+  background: var(--status-warning);
+}
+
+.status--online .status__dot {
+  background: var(--status-good);
+}
+
+.status--offline .status__dot {
+  background: var(--status-critical);
+}
+
+.status--online .status__label {
+  color: var(--status-good);
+}
+
+.status--offline .status__label {
+  color: var(--status-critical);
+}
+
+.status__detail {
+  color: var(--text-muted);
+}

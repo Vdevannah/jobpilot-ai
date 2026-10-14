@@ -12,6 +12,23 @@ class JobResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class JobDetailResponse(BaseModel):
+    """Full job detail, including description, for GET /jobs/{job_id}.
+
+    Kept separate from JobResponse so the list endpoint stays lightweight.
+    """
+
+    id: int
+    title: str
+    company: str
+    location: str
+    url: str
+    source: str
+    description: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class MatchResponse(BaseModel):
     job_id: int
     title: str
