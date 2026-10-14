@@ -20,10 +20,12 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.ai.api_schemas import AIReviewResponse, ResumeRecommendationResponse
+from src.ai.api_schemas import AIReviewResponse, JobRequirementsResponse, ResumeRecommendationResponse
+from src.ai.job_requirements import extract_job_requirements
 from src.ai.mock_fixtures import FICTIONAL_RESUME_VARIANTS
 from src.ai.orchestrator import create_workflow
 from src.candidate import candidate_profile
+from src.demo_record import is_demo_record
 from src.matching import match_job
 from src.repository import get_all_jobs, get_job_by_id
 from src.schemas import JobDetailResponse, JobResponse, MatchResponse
@@ -188,6 +190,33 @@ def get_ai_review(job_id: int):
         limitations=[MOCK_ANALYSIS_LIMITATION],
         research_report=research,
         critic_reports=critics,
+    )
+
+
+@app.get(
+    "/jobs/{job_id}/requirements",
+    response_model=JobRequirementsResponse,
+    responses={404: {"description": "Job not found"}},
+)
+def get_job_requirements(job_id: int):
+    """Deterministic structured-requirement extraction over this job's own
+    stored description (src.ai.job_requirements) -- unlike
+    resume-recommendation/ai-review above, this analyzes the job's actual
+    text rather than returning fixed mock output, but it is still never a
+    live OpenAI call: extract_job_requirements() is pure, offline,
+    regex/keyword-based analysis, called here exactly as it is defined.
+    Never writes to the database; never fetches a fresh description from
+    the job's original posting site.
+    """
+    job = get_job_by_id(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    requirements = extract_job_requirements(job.id, job.title, job.description)
+    return JobRequirementsResponse(
+        requirements=requirements,
+        is_demo_record=is_demo_record(job.url),
+        source=job.source,
     )
 
 

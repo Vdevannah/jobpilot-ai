@@ -644,3 +644,224 @@ def test_matches_score_identical_to_direct_match_job_call():
     assert api_result["overall_score"] == direct_result["overall_score"]
     assert api_result["skill_score"] == direct_result["skill_score"]
     assert api_result["job_track"] == direct_result["job_track"]
+
+
+# --- Phase 9A.4: GET /jobs/{job_id}/requirements ---
+
+STRUCTURED_DESCRIPTION = """We are hiring a Senior Data Engineer.
+
+Requirements:
+
+- 5+ years of Python experience
+- Strong SQL and AWS skills
+- Bachelor's degree in Computer Science required
+
+Preferred Qualifications:
+
+- Experience with Kafka
+
+Responsibilities:
+
+- Build and maintain scalable data pipelines
+
+This role is fully remote."""
+
+FLATTENED_DESCRIPTION = (
+    "We are hiring a Senior Data Engineer. Requirements: 5+ years of Python "
+    "experience. Strong SQL and AWS skills. Bachelor's degree in Computer "
+    "Science required. Preferred Qualifications: Experience with Kafka. "
+    "Responsibilities: Build and maintain scalable data pipelines. This "
+    "role is fully remote."
+)
+
+ALTERNATIVE_EXPERIENCE_DESCRIPTION = """Requirements:
+
+- 12+ years of relevant experience with a Bachelor's or Master's degree
+OR
+- 9+ years of relevant experience with a PhD"""
+
+
+def test_requirements_structured_description_is_deterministic_and_matches_extractor():
+    from src.ai.job_requirements import extract_job_requirements
+
+    mock_job = _mock_job(
+        title="Senior Data Engineer",
+        description=STRUCTURED_DESCRIPTION,
+        url="https://realcompany.example.net/jobs/1",
+        source="greenhouse",
+    )
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirements")
+
+    assert response.status_code == 200
+    body = response.json()
+    expected = extract_job_requirements(1, "Senior Data Engineer", STRUCTURED_DESCRIPTION)
+    assert body["requirements"] == expected.model_dump()
+    assert body["requirements"]["analysis_mode"] == "deterministic"
+
+
+def test_requirements_flattened_description_still_extracts_skills_and_experience():
+    mock_job = _mock_job(description=FLATTENED_DESCRIPTION)
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirements")
+
+    assert response.status_code == 200
+    reqs = response.json()["requirements"]
+    assert "python" in reqs["required_skills"]
+    assert "kafka" in reqs["preferred_skills"]
+    assert reqs["experience_requirements"]
+    assert reqs["experience_requirements"][0]["minimum_years"] == 5.0
+
+
+def test_requirements_no_description_returns_structured_response_without_fabrication():
+    mock_job = _mock_job(description=None)
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirements")
+
+    assert response.status_code == 200
+    reqs = response.json()["requirements"]
+    assert reqs["required_skills"] == []
+    assert reqs["experience_requirements"] == []
+    assert reqs["missing_information"]
+    assert reqs["requires_human_review"] is True
+    assert reqs["status"] == "pending_review"
+
+
+def test_requirements_blank_description_is_treated_as_unavailable():
+    mock_job = _mock_job(description="   ")
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirements")
+
+    assert response.status_code == 200
+    reqs = response.json()["requirements"]
+    assert reqs["missing_information"]
+
+
+def test_requirements_missing_job_id_returns_404():
+    with patch("src.api.get_job_by_id", return_value=None):
+        response = client.get("/jobs/999/requirements")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Job not found"}
+
+
+def test_requirements_labels_example_com_url_as_demo_record():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION, url="https://example.com/jobs/1")
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirements")
+
+    assert response.status_code == 200
+    assert response.json()["is_demo_record"] is True
+
+
+def test_requirements_does_not_label_other_hostnames_as_demo_record():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION, url="https://realcompany.example.net/jobs/1")
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirements")
+
+    assert response.status_code == 200
+    # False only means "not a known example.com placeholder" -- never proof
+    # the posting is live or still accepting applications.
+    assert response.json()["is_demo_record"] is False
+
+
+def test_requirements_distinguishes_required_from_preferred_skills():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION)
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirements")
+
+    reqs = response.json()["requirements"]
+    assert "python" in reqs["required_skills"]
+    assert "kafka" not in reqs["required_skills"]
+    assert "kafka" in reqs["preferred_skills"]
+    assert "python" not in reqs["preferred_skills"]
+
+
+def test_requirements_preserves_conditional_experience_alternatives():
+    mock_job = _mock_job(description=ALTERNATIVE_EXPERIENCE_DESCRIPTION)
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirements")
+
+    assert response.status_code == 200
+    experience = response.json()["requirements"]["experience_requirements"]
+    assert len(experience) == 2
+    groups = {req["alternative_group"] for req in experience}
+    assert len(groups) == 1 and None not in groups
+    assert {req["minimum_years"] for req in experience} == {12.0, 9.0}
+
+
+def test_requirements_evidence_offsets_are_exact_substrings_of_stored_description():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION)
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirements")
+
+    reqs = response.json()["requirements"]
+
+    def _assert_evidence_list(evidence_list):
+        for evidence in evidence_list:
+            assert evidence["char_start"] is not None
+            assert evidence["char_end"] is not None
+            quote = STRUCTURED_DESCRIPTION[evidence["char_start"]:evidence["char_end"]]
+            assert quote == evidence["quote"]
+
+    for evidence_list in reqs["required_skills_evidence"].values():
+        _assert_evidence_list(evidence_list)
+    for evidence_list in reqs["preferred_skills_evidence"].values():
+        _assert_evidence_list(evidence_list)
+    for experience in reqs["experience_requirements"]:
+        _assert_evidence_list(experience["evidence"])
+    for evidence_list in reqs["required_education_evidence"].values():
+        _assert_evidence_list(evidence_list)
+    _assert_evidence_list(reqs["location_evidence"])
+
+
+def test_requirements_marks_human_review_required_and_pending():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION)
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        response = client.get("/jobs/1/requirements")
+
+    reqs = response.json()["requirements"]
+    assert reqs["requires_human_review"] is True
+    assert reqs["status"] == "pending_review"
+    assert reqs["analysis_mode"] == "deterministic"
+
+
+def test_requirements_endpoint_never_calls_openai_or_mock_workflow():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION)
+    with patch("src.api.get_job_by_id", return_value=mock_job), patch(
+        "src.api.create_workflow"
+    ) as workflow_factory:
+        response = client.get("/jobs/1/requirements")
+
+    assert response.status_code == 200
+    workflow_factory.assert_not_called()
+
+
+def test_requirements_endpoint_does_not_mutate_the_database():
+    mock_job = _mock_job(description=STRUCTURED_DESCRIPTION)
+    with patch("src.api.get_job_by_id", return_value=mock_job) as mock_get_job:
+        client.get("/jobs/1/requirements")
+        second_response = client.get("/jobs/1/requirements")
+
+    assert second_response.status_code == 200
+    # Only the read helper is touched; nothing resembling a write/update/save
+    # call exists on this path for the mock job to have received.
+    assert mock_get_job.call_count == 2
+    assert not any(name.startswith(("save", "update", "write", "delete"))
+                   for name in dir(mock_job) if not name.startswith("_"))
+
+
+def test_requirements_does_not_affect_ai_review_or_resume_recommendation():
+    mock_job = _mock_job(description="A sufficiently detailed job description.")
+    with patch("src.api.get_job_by_id", return_value=mock_job):
+        requirements_response = client.get("/jobs/1/requirements")
+        review_response = client.get("/jobs/1/ai-review")
+        recommendation_response = client.get("/jobs/1/resume-recommendation")
+
+    assert requirements_response.status_code == 200
+    assert review_response.status_code == 200
+    assert recommendation_response.status_code == 200
+    assert review_response.json()["analysis_mode"] == "mock"
+    assert recommendation_response.json()["analysis_mode"] == "mock"
+    assert "requirements" not in review_response.json()
+    assert "requirements" not in recommendation_response.json()
