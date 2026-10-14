@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import JobDetail from "./JobDetail";
@@ -42,7 +43,10 @@ describe("JobDetail", () => {
   });
 
   it("renders the full description, employer, location, source, and posting link", async () => {
-    vi.spyOn(apiClient, "getJobById").mockResolvedValue(JOB);
+    // A genuine (non-demo-placeholder) URL, since the posting link is now
+    // hidden for example.com records -- see the "only shows..." test below.
+    const realJob = { ...JOB, url: "https://careers.acme-corp.com/1" };
+    vi.spyOn(apiClient, "getJobById").mockResolvedValue(realJob);
     vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
     renderDetail();
 
@@ -51,17 +55,18 @@ describe("JobDetail", () => {
     expect(screen.getByText(/greenhouse/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /view original posting/i })).toHaveAttribute(
       "href",
-      "https://example.com/1",
+      "https://careers.acme-corp.com/1",
     );
   });
 
-  it("shows a clear message when the description is missing, plus a limited-information notice", async () => {
+  it("shows an explicit notice when the description is missing, rather than fabricating one", async () => {
     vi.spyOn(apiClient, "getJobById").mockResolvedValue({ ...JOB, description: null });
     vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
     renderDetail();
 
-    expect(await screen.findByText("No description is available for this job posting.")).toBeInTheDocument();
-    expect(screen.getByText(/the match score below is based on limited job information/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText("Job description is unavailable. Match scores may be based on limited information."),
+    ).toBeInTheDocument();
   });
 
   it("renders the existing score breakdown when a match is available", async () => {
@@ -69,8 +74,13 @@ describe("JobDetail", () => {
     vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
     renderDetail();
 
-    expect(await screen.findByText("82%")).toBeInTheDocument();
-    expect(screen.getByText("Strong Match")).toBeInTheDocument();
+    // "82%" and "Strong Match" now appear both in the compact summary near
+    // the header and in the full breakdown below -- scope to the full
+    // breakdown section specifically.
+    await screen.findByText("Skill score");
+    const breakdown = document.getElementById("match-breakdown");
+    expect(within(breakdown).getByText("82%")).toBeInTheDocument();
+    expect(within(breakdown).getByText("Strong Match")).toBeInTheDocument();
     const skillScoreRow = screen.getByText("Skill score").closest(".job-detail__score-row");
     expect(skillScoreRow).toHaveTextContent("100.0");
     expect(screen.getByText("python, sql")).toBeInTheDocument();
@@ -98,7 +108,7 @@ describe("JobDetail", () => {
     vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
     renderDetail();
 
-    expect(await screen.findByText(/not a prediction of hiring likelihood/i)).toBeInTheDocument();
+    expect(await screen.findByText(/not predictions of hiring likelihood/i)).toBeInTheDocument();
   });
 
   it("labels candidate experience as track-specific, not total professional experience", async () => {
@@ -157,13 +167,189 @@ describe("JobDetail", () => {
     expect(insightsLink).toHaveAttribute("href", "/insights?jobId=1");
   });
 
-  it("marks the job title area and posting link as distinct, clearly-labeled navigation", async () => {
+  it("only shows the posting link when the job has a valid URL", async () => {
+    vi.spyOn(apiClient, "getJobById").mockResolvedValue({ ...JOB, url: "" });
+    vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+    renderDetail();
+
+    await screen.findByText(JOB.title);
+    expect(screen.queryByRole("link", { name: /view original posting/i })).not.toBeInTheDocument();
+  });
+
+  it("hides the posting link for a demo-seeded placeholder record, but keeps internal AI nav links", async () => {
+    // JOB.url is the example.com placeholder domain, so it's a demo record.
     vi.spyOn(apiClient, "getJobById").mockResolvedValue(JOB);
+    vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+    renderDetail();
+
+    await screen.findByText("Demo record");
+    expect(screen.queryByRole("link", { name: /view original posting/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /get resume recommendation/i })).toHaveAttribute(
+      "href",
+      "/resumes?jobId=1",
+    );
+  });
+
+  it("shows the posting link for a genuine job with a real URL", async () => {
+    const realJob = { ...JOB, url: "https://careers.acme-corp.com/1" };
+    vi.spyOn(apiClient, "getJobById").mockResolvedValue(realJob);
+    vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+    renderDetail();
+
+    await screen.findByText(JOB.title);
+    expect(screen.getByRole("link", { name: /view original posting/i })).toHaveAttribute(
+      "href",
+      "https://careers.acme-corp.com/1",
+    );
+  });
+
+  it("omits the source meta item rather than showing a blank one when source is unavailable", async () => {
+    vi.spyOn(apiClient, "getJobById").mockResolvedValue({ ...JOB, source: "" });
+    vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+    renderDetail();
+
+    await screen.findByText(JOB.title);
+    expect(screen.queryByText("greenhouse")).not.toBeInTheDocument();
+  });
+
+  it("marks the job title area and posting link as distinct, clearly-labeled navigation", async () => {
+    const realJob = { ...JOB, url: "https://careers.acme-corp.com/1" };
+    vi.spyOn(apiClient, "getJobById").mockResolvedValue(realJob);
     vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
     renderDetail();
 
     const postingLink = await screen.findByRole("link", { name: /view original posting/i });
     expect(postingLink).toHaveAttribute("target", "_blank");
-    expect(postingLink).toHaveAttribute("href", "https://example.com/1");
+    expect(postingLink).toHaveAttribute("href", "https://careers.acme-corp.com/1");
+  });
+
+  describe("compact match summary", () => {
+    it("shows the score, recommendation, and career track near the top, without presenting it as a hiring probability", async () => {
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue(JOB);
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+      renderDetail();
+
+      await screen.findByText(JOB.title);
+      const summary = document.querySelector(".job-detail__summary");
+      expect(within(summary).getByText("82%")).toBeInTheDocument();
+      expect(within(summary).getByText("Strong Match")).toBeInTheDocument();
+      expect(within(summary).getByText("Data")).toBeInTheDocument();
+      expect(screen.queryByText(/hiring probability/i)).not.toBeInTheDocument();
+    });
+
+    it("shows a concise limited-evidence note when no career track was detected, without inferring missing skills", async () => {
+      const unknownTrackMatch = { ...MATCH, job_track: null };
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue(JOB);
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([unknownTrackMatch]);
+      renderDetail();
+
+      await screen.findByText(JOB.title);
+      const summary = document.querySelector(".job-detail__summary");
+      expect(within(summary).getByText(/no career track was detected/i)).toBeInTheDocument();
+    });
+
+    it("shows a truthful unavailable state, not an invented score, when there is no corresponding match", async () => {
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue(JOB);
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([]);
+      renderDetail();
+
+      await screen.findByText(JOB.title);
+      const summary = document.querySelector(".job-detail__summary");
+      expect(within(summary).getByText(/no match information is available/i)).toBeInTheDocument();
+      expect(within(summary).queryByText(/%/)).not.toBeInTheDocument();
+    });
+
+    it("does not duplicate the full score grid, skills, or reasons from the detailed breakdown", async () => {
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue(JOB);
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+      renderDetail();
+
+      await screen.findByText(JOB.title);
+      const summary = document.querySelector(".job-detail__summary");
+      expect(within(summary).queryByText("Skill score")).not.toBeInTheDocument();
+      expect(within(summary).queryByText("python, sql")).not.toBeInTheDocument();
+    });
+
+    it("provides a keyboard-reachable link to the full match breakdown section", async () => {
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue(JOB);
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+      renderDetail();
+
+      await screen.findByText(JOB.title);
+      const link = screen.getByRole("link", { name: /view full match breakdown/i });
+      expect(link).toHaveAttribute("href", "#match-breakdown");
+      expect(document.getElementById("match-breakdown")).not.toBeNull();
+
+      link.focus();
+      expect(link).toHaveFocus();
+    });
+  });
+
+  describe("job description rendering", () => {
+    it("preserves paragraph breaks when the stored description has them", async () => {
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue({
+        ...JOB,
+        description: "First paragraph.\n\nSecond paragraph.",
+      });
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+      renderDetail();
+
+      expect(await screen.findByText("First paragraph.")).toBeInTheDocument();
+      expect(screen.getByText("Second paragraph.")).toBeInTheDocument();
+    });
+
+    it("renders HTML-like description content as literal text, never as executable markup", async () => {
+      const text = "<img src=x onerror=alert(1)> and <b>bold</b> claims.";
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue({ ...JOB, description: text });
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+      const { container } = renderDetail();
+
+      expect(await screen.findByText(text)).toBeInTheDocument();
+      expect(container.querySelector("img")).not.toBeInTheDocument();
+      expect(container.querySelector("b")).not.toBeInTheDocument();
+    });
+
+    it("keeps a very long description complete (not truncated) once expanded via Read full description", async () => {
+      const longText = "word ".repeat(2500).trim();
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue({ ...JOB, description: longText });
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+      renderDetail();
+
+      const toggle = await screen.findByRole("button", { name: /read full description/i });
+      await userEvent.click(toggle);
+      expect(screen.getByText(longText)).toBeInTheDocument();
+    });
+
+    it("shows a readable preview with a Read full description button for a long description", async () => {
+      const longText = "word ".repeat(2500).trim();
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue({ ...JOB, description: longText });
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+      renderDetail();
+
+      await screen.findByRole("button", { name: /read full description/i });
+      expect(screen.queryByText(longText)).not.toBeInTheDocument();
+    });
+
+    it("shows Show less after expanding, and collapses back when clicked", async () => {
+      const longText = "word ".repeat(2500).trim();
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue({ ...JOB, description: longText });
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+      renderDetail();
+
+      await userEvent.click(await screen.findByRole("button", { name: /read full description/i }));
+      await userEvent.click(screen.getByRole("button", { name: /show less/i }));
+      expect(screen.queryByText(longText)).not.toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: /read full description/i })).toBeInTheDocument();
+    });
+
+    it("still shows the missing-description notice unchanged", async () => {
+      vi.spyOn(apiClient, "getJobById").mockResolvedValue({ ...JOB, description: null });
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue([MATCH]);
+      renderDetail();
+
+      expect(
+        await screen.findByText("Job description is unavailable. Match scores may be based on limited information."),
+      ).toBeInTheDocument();
+    });
   });
 });

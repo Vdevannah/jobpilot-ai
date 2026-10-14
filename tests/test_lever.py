@@ -51,8 +51,9 @@ def test_get_lever_jobs_filters_and_normalizes_jobs():
             "url": "https://example.com/data-engineer",
             "source": "lever",
             "description": (
-                "Build and maintain reliable data pipelines. Skill Set: "
-                "Python and SQL 3+ years of experience"
+                "Build and maintain reliable data pipelines.\n\n"
+                "Skill Set:\n\n"
+                "- Python and SQL\n- 3+ years of experience"
             ),
         }
     ]

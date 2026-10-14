@@ -29,6 +29,17 @@ const MATCHES = [
   },
 ];
 
+// Mirrors what GET /matches actually returns in production (no `source`
+// field at all -- see utils/jobSourceLookup.js), unlike MATCHES above whose
+// fixtures include `source` directly for the other tests' convenience.
+const MATCHES_WITHOUT_SOURCE = MATCHES.map(({ source: _source, ...rest }) => rest);
+
+const JOBS = [
+  { id: 1, title: "Data Engineer", company: "Acme", location: "New York, NY", url: "https://example.com/1", source: "greenhouse" },
+  { id: 2, title: "Office Coordinator", company: "Weak Co", location: "Boston, MA", url: "https://example.com/2", source: "lever" },
+  // Deliberately no job with id 3, so match job_id 3 has nothing to join.
+];
+
 function renderPage() {
   return render(
     <MemoryRouter>
@@ -151,7 +162,7 @@ describe("JobMatches", () => {
     renderPage();
     await screen.findByText("Data Engineer");
 
-    expect(screen.getByText(/not a prediction of hiring likelihood/i)).toBeInTheDocument();
+    expect(screen.getByText(/not predictions of hiring likelihood/i)).toBeInTheDocument();
   });
 
   it("flags a job with no detected skills/experience as limited information, not a skill gap", async () => {
@@ -177,5 +188,90 @@ describe("JobMatches", () => {
 
     const card = (await screen.findByText("Data Engineer")).closest(".match-card");
     expect(within(card).getByText(/all detected required skills are matched/i)).toBeInTheDocument();
+  });
+
+  it("shows the page heading and subtitle", async () => {
+    vi.spyOn(apiClient, "getMatches").mockResolvedValue(MATCHES);
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Job Matches" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Review deterministic compatibility scores based on available job information."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the match score as a prominent badge without presenting it as a hiring probability", async () => {
+    vi.spyOn(apiClient, "getMatches").mockResolvedValue(MATCHES);
+    renderPage();
+
+    const card = (await screen.findByText("Data Engineer")).closest(".match-card");
+    const score = within(card).getByText("82%");
+    expect(score).toHaveClass("match-card__score");
+    expect(screen.queryByText(/hiring probability/i)).not.toBeInTheDocument();
+  });
+
+  describe("source enrichment (GET /matches does not return source)", () => {
+    it("joins each match's source from GET /jobs by job_id", async () => {
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue(MATCHES_WITHOUT_SOURCE);
+      vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+      renderPage();
+
+      const card = (await screen.findByText("Data Engineer")).closest(".match-card");
+      await waitFor(() => {
+        expect(within(card).getByText("greenhouse")).toBeInTheDocument();
+      });
+    });
+
+    it("shows a neutral fallback, not a guess, when no corresponding job is found", async () => {
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue(MATCHES_WITHOUT_SOURCE);
+      vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+      renderPage();
+
+      const card = (await screen.findByText("General Role")).closest(".match-card");
+      await waitFor(() => {
+        expect(within(card).getByText("Source unavailable")).toBeInTheDocument();
+      });
+    });
+
+    it("never overwrites a source the match record already has", async () => {
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue(MATCHES);
+      vi.spyOn(apiClient, "getJobs").mockResolvedValue([{ id: 1, source: "some-other-source" }]);
+      renderPage();
+
+      const card = (await screen.findByText("Data Engineer")).closest(".match-card");
+      expect(within(card).getByText("greenhouse")).toBeInTheDocument();
+      expect(within(card).queryByText("some-other-source")).not.toBeInTheDocument();
+    });
+
+    it("preserves scores, ranking, and pagination when sources are joined in", async () => {
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue(MATCHES_WITHOUT_SOURCE);
+      vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+      renderPage();
+
+      await screen.findByText("Data Engineer");
+      // Default sort is score (high to low): 82, 50, 30.
+      const titles = screen.getAllByRole("link", { name: /data engineer|general role|office coordinator/i });
+      expect(titles.map((link) => link.textContent.trim().replace(/[›\s]+$/, ""))).toEqual([
+        "Data Engineer",
+        "General Role",
+        "Office Coordinator",
+      ]);
+    });
+
+    it("sorts by source without crashing when some matches have no joined source", async () => {
+      vi.spyOn(apiClient, "getMatches").mockResolvedValue(MATCHES_WITHOUT_SOURCE);
+      vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+      renderPage();
+      await screen.findByText("Data Engineer");
+
+      const user = userEvent.setup();
+      await user.selectOptions(screen.getByLabelText(/sort by/i), "source");
+
+      // Just asserting it renders without throwing is the point here --
+      // "General Role" (job_id 3, no matching job) sorts to the end.
+      await waitFor(() => {
+        expect(screen.getByText("General Role")).toBeInTheDocument();
+      });
+    });
   });
 });

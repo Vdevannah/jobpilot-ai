@@ -2,63 +2,120 @@
   color-scheme: light;
 
   /* Surfaces */
-  --page-plane: #f9f9f7;
-  --surface-1: #fcfcfb;
-  --border: rgba(11, 11, 11, 0.1);
+  --page-plane: #f5f8fc;
+  --surface-1: #ffffff;
+  --border: #e2eaf3;
 
   /* Ink */
-  --text-primary: #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted: #898781;
+  --text-primary: #102347;
+  --text-secondary: #52647e;
+  --text-muted: #6b7a91;
 
-  /* Accent (categorical slot 1 - blue) */
-  --accent: #2a78d6;
+  /* Accent (primary blue) */
+  --accent: #0866e8;
   --accent-ink: #ffffff;
-  --accent-wash: rgba(42, 120, 214, 0.1);
+  --accent-wash: rgba(8, 102, 232, 0.1);
+  --accent-hover: #0757c7;
+
+  /* Secondary categorical accents, for badges/data-viz -- not status */
+  --accent-purple: #7c3aed;
+  --accent-purple-wash: rgba(124, 58, 237, 0.1);
+  --accent-green: #16a34a;
+  --accent-green-wash: rgba(22, 163, 74, 0.1);
+  --accent-orange: #f97316;
+  --accent-orange-wash: rgba(249, 115, 22, 0.1);
 
   /* Status (fixed - never themed) */
-  --status-good: #0ca30c;
-  --status-warning: #fab219;
-  --status-serious: #ec835a;
-  --status-critical: #d03b3b;
+  --status-good: #16a34a;
+  --status-warning: #d97706;
+  --status-serious: #ea7a3a;
+  --status-critical: #dc2626;
 
+  /* Sidebar (dark navy, same in light and dark mode -- it is a fixed brand
+     surface, not a themed one) */
+  --sidebar-bg: #10294a;
+  --sidebar-bg-darker: #0b1f3a;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-text: #aec2de;
+  --sidebar-text-muted: #7991b8;
+  --sidebar-text-active: #ffffff;
+  --sidebar-active-bg: var(--accent);
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.07);
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Radii */
+  --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
-  --shadow-card: 0 1px 2px rgba(11, 11, 11, 0.04), 0 1px 1px rgba(11, 11, 11, 0.03);
+  --radius-xl: 18px;
 
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Shadows */
+  --shadow-card: 0 1px 2px rgba(16, 35, 71, 0.04), 0 4px 10px rgba(16, 35, 71, 0.05);
+  --shadow-sidebar: 2px 0 12px rgba(8, 15, 28, 0.12);
+  --shadow-popover: 0 8px 24px rgba(16, 35, 71, 0.12);
+
+  /* Typography */
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* Focus */
+  --focus-ring-color: var(--accent);
+  --focus-ring: 0 0 0 3px rgba(8, 102, 232, 0.28);
+
+  font-family: var(--font-sans);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --page-plane: #0d0d0d;
-    --surface-1: #1a1a19;
+    --page-plane: #0b1220;
+    --surface-1: #121a2b;
     --border: rgba(255, 255, 255, 0.1);
 
-    --text-primary: #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted: #898781;
+    --text-primary: #eef3fb;
+    --text-secondary: #b7c3d9;
+    --text-muted: #6b7a91;
 
     --accent: #3987e5;
     --accent-ink: #ffffff;
-    --accent-wash: rgba(57, 135, 229, 0.16);
+    --accent-wash: rgba(57, 135, 229, 0.18);
+    --accent-hover: #4f98ea;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.25);
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page-plane: #0d0d0d;
-  --surface-1: #1a1a19;
+  --page-plane: #0b1220;
+  --surface-1: #121a2b;
   --border: rgba(255, 255, 255, 0.1);
 
-  --text-primary: #ffffff;
-  --text-secondary: #c3c2b7;
-  --text-muted: #898781;
+  --text-primary: #eef3fb;
+  --text-secondary: #b7c3d9;
+  --text-muted: #6b7a91;
 
   --accent: #3987e5;
   --accent-ink: #ffffff;
-  --accent-wash: rgba(57, 135, 229, 0.16);
+  --accent-wash: rgba(57, 135, 229, 0.18);
+  --accent-hover: #4f98ea;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.25);
 }
 
 * {
@@ -89,6 +146,17 @@ a {
 
 button {
   font-family: inherit;
+}
+
+/* Single, consistent keyboard-focus indicator for the whole app. Elements
+   that need a tighter or inset ring (e.g. form fields already defining
+   their own :focus outline) simply override outline-color/offset locally;
+   this keeps one rule as the baseline instead of every component and page
+   adding its own. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 h1,

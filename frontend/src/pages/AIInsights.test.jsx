@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -109,6 +109,53 @@ describe("AIInsights", () => {
     ).toBeInTheDocument();
   });
 
+  it("consolidates the mock-analysis disclosure into a single info card, not multiple warning boxes", async () => {
+    vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+    vi.spyOn(apiClient, "getAIReview").mockResolvedValue(SUCCESS_RESPONSE);
+    renderPage();
+
+    await screen.findByText("Mock AI Analysis");
+    expect(document.querySelectorAll(".ai-insights__mock-indicator")).toHaveLength(1);
+    // Before any request, there must be exactly one disclosure of the
+    // "does not analyze the actual description" fact -- not a second,
+    // separate warning box repeating it.
+    expect(screen.getAllByText(/does not read or analyze the selected job's actual description/i)).toHaveLength(1);
+  });
+
+  it("shows all three critic-review variants (Pharma, Data, Scientific AI) with their own summaries", async () => {
+    vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+    vi.spyOn(apiClient, "getAIReview").mockResolvedValue(SUCCESS_RESPONSE);
+    renderPage();
+
+    const select = await screen.findByLabelText(/select a discovered job/i);
+    await userEvent.selectOptions(select, "1");
+    await userEvent.click(screen.getByRole("button", { name: /request ai review/i }));
+
+    await screen.findByText("Mock critic summary for data.");
+    expect(screen.getByRole("heading", { name: "Pharma" })).toBeInTheDocument();
+    expect(screen.getByText("Mock critic summary for pharma.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Data" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Scientific AI" })).toBeInTheDocument();
+    expect(screen.getByText("Mock critic summary for scientific_ai.")).toBeInTheDocument();
+  });
+
+  it("supports selecting a job and triggering the review entirely via the keyboard", async () => {
+    vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+    const reviewSpy = vi.spyOn(apiClient, "getAIReview").mockResolvedValue(SUCCESS_RESPONSE);
+    renderPage();
+
+    const select = await screen.findByLabelText(/select a discovered job/i);
+    select.focus();
+    await userEvent.selectOptions(select, "1");
+
+    const button = screen.getByRole("button", { name: /request ai review/i });
+    button.focus();
+    expect(button).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() => expect(reviewSpy).toHaveBeenCalledWith("1"));
+  });
+
   it("displays structured job analysis, research findings, and critic warnings", async () => {
     vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
     vi.spyOn(apiClient, "getAIReview").mockResolvedValue(SUCCESS_RESPONSE);
@@ -196,5 +243,69 @@ describe("AIInsights", () => {
 
     const select = await screen.findByLabelText(/select a discovered job/i);
     expect(select).toHaveValue("1");
+  });
+
+  it("shows the page heading and subtitle", async () => {
+    vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "AI Insights" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Explore mock AI analysis of job requirements and potential fit."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a prominent Mock AI Analysis indicator explaining this is not a live OpenAI analysis", async () => {
+    vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+    renderPage();
+
+    expect(await screen.findByText("Mock AI Analysis")).toBeInTheDocument();
+    expect(screen.getByText(/not a live openai analysis of your personal resumes/i)).toBeInTheDocument();
+  });
+
+  it("communicates that the user must independently verify the analysis before applying", async () => {
+    vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+    renderPage();
+
+    expect(
+      await screen.findByText(/independently verify the job requirements and this analysis/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the selected job's available context as soon as it is chosen, and adds the career track once the API returns one", async () => {
+    vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+    vi.spyOn(apiClient, "getAIReview").mockResolvedValue(SUCCESS_RESPONSE);
+    renderPage();
+
+    const select = await screen.findByLabelText(/select a discovered job/i);
+    await userEvent.selectOptions(select, "1");
+
+    const contextCard = document.querySelector(".job-context-card");
+    expect(within(contextCard).getByText("Data Engineer")).toBeInTheDocument();
+    expect(within(contextCard).getByText("Acme")).toBeInTheDocument();
+    expect(within(contextCard).queryByText("Data")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /request ai review/i }));
+    await screen.findByText("python, sql");
+
+    expect(within(contextCard).getByText("Data")).toBeInTheDocument();
+  });
+
+  it("renders only the insight sections the API actually returned, never a forced empty card", async () => {
+    vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+    vi.spyOn(apiClient, "getAIReview").mockResolvedValue({
+      ...SUCCESS_RESPONSE,
+      research_report: null,
+      critic_reports: null,
+    });
+    renderPage();
+
+    const select = await screen.findByLabelText(/select a discovered job/i);
+    await userEvent.selectOptions(select, "1");
+    await userEvent.click(screen.getByRole("button", { name: /request ai review/i }));
+
+    await screen.findByText("Mock job analysis");
+    expect(screen.queryByText("Research findings")).not.toBeInTheDocument();
+    expect(screen.queryByText(/critic review/i)).not.toBeInTheDocument();
   });
 });

@@ -4,10 +4,12 @@ import { getJobs, getResumeRecommendation } from "../api/client";
 import { useApiQuery } from "../hooks/useApiQuery";
 import { useLazyRequest } from "../hooks/useLazyRequest";
 import JobPicker from "../components/JobPicker";
+import JobContextCard from "../components/JobContextCard";
 import AIResponseMeta from "../components/AIResponseMeta";
 import Notice from "../components/Notice";
+import PageHeader from "../components/PageHeader";
 import { LoadingState, ErrorState, EmptyState } from "../components/AsyncState";
-import { RESUME_VARIANT_LABELS } from "../utils/aiLabels";
+import { AI_JOB_TRACK_LABELS, RESUME_VARIANT_LABELS } from "../utils/aiLabels";
 import "./ResumeRecommendations.css";
 
 export default function ResumeRecommendations() {
@@ -38,17 +40,27 @@ export default function ResumeRecommendations() {
   const rankingByVariant = recommendation
     ? Object.fromEntries(recommendation.rankings.map((ranking) => [ranking.variant, ranking]))
     : {};
+  const selectedJob = jobs.find((job) => String(job.id) === String(selectedJobId)) ?? null;
+  const trackLabel = data?.job_analysis?.job_track
+    ? AI_JOB_TRACK_LABELS[data.job_analysis.job_track] ?? data.job_analysis.job_track
+    : null;
+  const leaderRanking =
+    recommendation && !recommendation.insufficient_evidence && recommendation.recommended_variant
+      ? rankingByVariant[recommendation.recommended_variant]
+      : null;
 
   return (
     <div className="resume-recommendations">
-      <header className="resume-recommendations__intro">
-        <h2>Resume Recommendations</h2>
-        <Notice tone="warning">
-          All resume evidence below is fictional demonstration data for three sample variants
-          (Pharma, Data, Scientific AI) -- not a real resume, and not personalized to any actual
-          candidate. Nothing here has been reviewed by a human yet.
-        </Notice>
-      </header>
+      <PageHeader
+        title="Resume Recommendations"
+        subtitle="Compare resume variants recommended for each opportunity."
+      />
+
+      <Notice tone="warning">
+        All resume evidence below is fictional demonstration data for three sample variants
+        (Pharma, Data, Scientific AI) -- not personalized to any real candidate, and requiring
+        human review before any real application.
+      </Notice>
 
       {jobs.length === 0 ? (
         <EmptyState message="No jobs are available yet. Run the job collection script to populate the dashboard." />
@@ -63,6 +75,8 @@ export default function ResumeRecommendations() {
           requestDisabled={isLoading}
         />
       )}
+
+      <JobContextCard job={selectedJob} trackLabel={trackLabel} />
 
       {status === "error" && <ErrorState message={error} onRetry={() => run(selectedJobId)} />}
 
@@ -110,11 +124,47 @@ export default function ResumeRecommendations() {
                   <Notice tone="info">
                     Highest ranking points: {RESUME_VARIANT_LABELS[recommendation.recommended_variant] ??
                       recommendation.recommended_variant}
-                    . This reflects fictional evidence only, not a hiring judgment.
                   </Notice>
                 )}
               </div>
 
+              {leaderRanking && (
+                <div className="resume-recommendations__leader-card">
+                  <p className="resume-recommendations__leader-label">Recommended resume</p>
+                  <div className="resume-recommendations__leader-headline">
+                    <h3 className="resume-recommendations__leader-variant">
+                      {RESUME_VARIANT_LABELS[leaderRanking.variant] ?? leaderRanking.variant}
+                    </h3>
+                    <div className="resume-recommendations__leader-points">
+                      <span className="resume-recommendations__leader-points-value">
+                        {leaderRanking.score}
+                      </span>
+                      <span className="resume-recommendations__leader-points-label">
+                        ranking points
+                      </span>
+                    </div>
+                  </div>
+                  {leaderRanking.reasons.length > 0 && (
+                    <>
+                      <p className="resume-recommendations__leader-heading">Why this variant</p>
+                      <ul className="resume-recommendations__reasons">
+                        {leaderRanking.reasons.map((reason) => (
+                          <li key={reason}>{reason}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {leaderRanking.limitations.length > 0 && (
+                    <ul className="resume-recommendations__limitations">
+                      {leaderRanking.limitations.map((limitation) => (
+                        <li key={limitation}>{limitation}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              <h3 className="resume-recommendations__comparison-title">Resume comparison</h3>
               <p className="resume-recommendations__points-note">
                 Ranking points below come directly from the existing Phase 7 deterministic
                 resume-selection algorithm (matched skills, education, and track-specific

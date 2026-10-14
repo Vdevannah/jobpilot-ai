@@ -1,0 +1,133 @@
+.dashboard-hero {
+  background: linear-gradient(135deg, var(--sidebar-bg) 0%, var(--accent) 140%);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-8) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  color: var(--sidebar-text-active);
+}
+
+.dashboard-hero__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 560px;
+}
+
+.dashboard-hero__brand {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sidebar-text);
+}
+
+.dashboard-hero__title {
+  font-size: 30px;
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.01em;
+  color: var(--sidebar-text-active);
+}
+
+.dashboard-hero__subtitle {
+  font-size: var(--fs-lg);
+  color: var(--sidebar-text);
+  line-height: 1.5;
+}
+
+.dashboard-hero__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  margin-top: var(--space-2);
+  background: var(--surface-1);
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-md);
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+}
+
+.dashboard-hero__cta:hover {
+  background: var(--accent-wash);
+}
+
+.dashboard-hero__cta-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.dashboard-hero__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.dashboard-hero__step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex: 1 1 200px;
+}
+
+.dashboard-hero__step-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.14);
+  flex-shrink: 0;
+}
+
+.dashboard-hero__step-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.dashboard-hero__step-text {
+  min-width: 0;
+}
+
+.dashboard-hero__step-label {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--sidebar-text-active);
+}
+
+.dashboard-hero__step-description {
+  font-size: var(--fs-xs);
+  color: var(--sidebar-text);
+  line-height: 1.4;
+}
+
+.dashboard-hero__step-arrow {
+  width: 16px;
+  height: 16px;
+  color: var(--sidebar-text-muted);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+@media (max-width: 760px) {
+  .dashboard-hero__step-arrow {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-hero {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .dashboard-hero__title {
+    font-size: 24px;
+  }
+}

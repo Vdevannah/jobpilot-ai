@@ -111,13 +111,32 @@ def normalize_skill(skill):
     return SKILL_ALIASES.get(normalized_skill, normalized_skill)
 
 
+def _normalize_description(description):
+    """Flattens a description for keyword/substring matching only.
+
+    src/utils.py's extract_structured_text() now preserves genuine
+    paragraph breaks and bullet markers for display, but every matching
+    function here must keep behaving exactly as it did before that
+    structure existed -- a paragraph break landing between two words of a
+    multi-word phrase (e.g. "machine" / "learning") must never make that
+    phrase stop matching. This collapses all whitespace runs (including
+    newlines) to single spaces and drops leading bullet markers, exactly
+    reproducing the single-space-flattened text the old clean_html_text()
+    used to produce, without ever altering word content or scores.
+    """
+    if not description:
+        return ""
+    text = re.sub(r"(?m)^[-*•]\s+", "", description)
+    return " ".join(text.split())
+
+
 def extract_skills(description):
     if not description:
         return []
 
     found_skills = []
     seen_skills = set()
-    normalized_description = description.lower()
+    normalized_description = _normalize_description(description).lower()
 
     for skill in SKILL_KEYWORDS:
         pattern = rf"(?<!\w){re.escape(skill)}(?!\w)"
@@ -139,7 +158,7 @@ def extract_years_experience(description):
         r"(?:\s+(?:of\s+)?(?:relevant\s+)?(?:work\s+)?experience\b)?",
         re.IGNORECASE,
     )
-    years = [int(match.group(1)) for match in pattern.finditer(description)]
+    years = [int(match.group(1)) for match in pattern.finditer(_normalize_description(description))]
     return max(years) if years else None
 
 
@@ -183,7 +202,7 @@ def calculate_domain_score(description, domains):
     if not domains:
         return 100.0
 
-    normalized_description = description.lower()
+    normalized_description = _normalize_description(description).lower()
     matched_domains = sum(
         domain.lower() in normalized_description for domain in domains
     )
@@ -208,7 +227,7 @@ def calculate_location_score(job_location, preferred_locations):
 
 def determine_job_track(job_title, description):
     normalized_title = job_title.lower()
-    normalized_description = description.lower()
+    normalized_description = _normalize_description(description).lower()
 
     data_title_indicators = (
         "data scientist",

@@ -1,10 +1,16 @@
+.job-matches {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
 .match-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .match-card {
@@ -12,17 +18,17 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  padding: 16px 18px;
+  padding: var(--space-4) var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .match-card__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .match-card__main {
@@ -33,13 +39,14 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--accent);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
 }
 
 .match-card__title:hover,
 .match-card__title:focus-visible {
+  color: var(--accent);
   text-decoration: underline;
 }
 
@@ -49,30 +56,60 @@
 }
 
 .match-card__meta {
-  font-size: 13px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--space-4);
+  margin-top: 4px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
+}
+
+.match-card__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.match-card__meta-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-muted);
 }
 
 .match-card__badges {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex-shrink: 0;
 }
 
+/* The match score is the headline number on this page -- larger than the
+   default ScoreBadge used elsewhere (e.g. the Dashboard's job table) -- but
+   still just a badge, not a hiring-probability callout: same color tiers,
+   same tooltip, same "not a prediction" copy. */
+.match-card__score {
+  font-size: var(--fs-lg);
+  padding: 7px 16px;
+}
+
 .match-card__recommendation {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
   color: var(--text-primary);
 }
 
 .match-card__skills {
-  padding-top: 8px;
+  padding-top: var(--space-2);
   border-top: 1px solid var(--border);
 }
 
 @media (max-width: 560px) {
   .match-card__header {
     flex-direction: column;
+  }
+
+  .match-card__badges {
+    flex-wrap: wrap;
   }
 }

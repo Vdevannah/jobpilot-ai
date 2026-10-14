@@ -1,0 +1,105 @@
+.job-listings-table__scroll {
+  overflow-x: auto;
+}
+
+.job-listings-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.job-listings-table th {
+  text-align: left;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.job-listings-table td {
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+  padding: 14px var(--space-3);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.job-listings-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.job-listings-table tbody tr:hover {
+  background: var(--page-plane);
+}
+
+/* The title cell is the one column allowed to wrap (onto at most two
+   lines -- see .job-listings-table__title-link); every other cell stays
+   single-line via the generic td rule above, so only this column's row
+   height ever grows, and never into an adjacent cell. */
+.job-listings-table__title-cell {
+  white-space: normal;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.job-listings-table__title-link {
+  /* Wraps naturally across up to two lines (line-clamp cuts off a third
+     line with an ellipsis rather than overflowing the cell), instead of
+     the previous single-line ellipsis truncation. The full title stays
+     in the link's text content either way, so it's always in the
+     accessible name and never hidden behind only a hover tooltip -- the
+     title="" attribute below is a supplementary hint, not the only way
+     to read it. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  max-width: 320px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.job-listings-table__title-link:hover {
+  color: var(--accent);
+}
+
+.job-listings-table__score-cell {
+  text-align: center;
+}
+
+.job-listings-table__actions-cell {
+  text-align: right;
+}
+
+.job-listings-table__view-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--accent);
+  background: var(--accent-wash);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  white-space: nowrap;
+}
+
+.job-listings-table__view-link:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+@media (max-width: 480px) {
+  .job-listings-table__title-link {
+    max-width: 200px;
+  }
+}

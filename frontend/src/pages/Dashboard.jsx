@@ -1,12 +1,21 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { getJobs, getMatches } from "../api/client";
+import DashboardHero from "../components/DashboardHero";
+import KpiCard from "../components/KpiCard";
 import StatTile from "../components/StatTile";
-import JobPreviewList from "../components/JobPreviewList";
+import ChartCard from "../components/ChartCard";
+import BarChart from "../components/BarChart";
+import DonutChart from "../components/DonutChart";
+import JobListingsTable from "../components/JobListingsTable";
+import { BriefcaseIcon, BuildingIcon, MapPinIcon, SourceIcon } from "../components/icons";
 import { LoadingState, ErrorState, EmptyState } from "../components/AsyncState";
+import { countBy, countDistinct, topNWithOther } from "../utils/jobStats";
+import { withSourceFromJobs } from "../utils/jobSourceLookup";
 import "./Dashboard.css";
 
 const STRONG_MATCH_THRESHOLD = 80;
-const TOP_JOBS_PREVIEW_COUNT = 5;
+const RECENT_JOBS_LIMIT = 8;
+const CHART_CATEGORY_LIMIT = 4;
 
 function average(numbers) {
   if (numbers.length === 0) return 0;
@@ -48,17 +57,38 @@ export default function Dashboard() {
     return <ErrorState message={state.error} onRetry={retry} />;
   }
 
-  const totalJobs = state.jobs.length;
-  const strongMatches = state.matches.filter((match) => match.overall_score >= STRONG_MATCH_THRESHOLD);
-  const averageScore = average(state.matches.map((match) => match.overall_score));
-  const topJobs = [...state.matches]
-    .sort((a, b) => b.overall_score - a.overall_score)
-    .slice(0, TOP_JOBS_PREVIEW_COUNT);
+  const { jobs, matches } = state;
+  const totalJobs = jobs.length;
+  const totalCompanies = countDistinct(jobs, (job) => job.company);
+  const totalLocations = countDistinct(jobs, (job) => job.location);
+  const totalSources = countDistinct(jobs, (job) => job.source);
+
+  const strongMatches = matches.filter((match) => match.overall_score >= STRONG_MATCH_THRESHOLD);
+  const averageScore = average(matches.map((match) => match.overall_score));
+
+  const sourceGroups = topNWithOther(countBy(jobs, (job) => job.source), CHART_CATEGORY_LIMIT);
+  const locationGroups = topNWithOther(countBy(jobs, (job) => job.location), CHART_CATEGORY_LIMIT);
+
+  // GET /matches doesn't return a job's source, so it's joined in from the
+  // already-fetched /jobs list (shared utils/jobSourceLookup, also used by
+  // Job Matches) rather than guessed or hidden.
+  const recentJobs = withSourceFromJobs(
+    [...matches].sort((a, b) => b.job_id - a.job_id).slice(0, RECENT_JOBS_LIMIT),
+    jobs,
+  );
 
   return (
     <div className="dashboard">
-      <section className="dashboard__stats">
-        <StatTile label="Total jobs" value={totalJobs} />
+      <DashboardHero />
+
+      <section className="dashboard__kpis">
+        <KpiCard label="Total jobs" value={totalJobs} icon={<BriefcaseIcon />} accent="blue" />
+        <KpiCard label="Companies" value={totalCompanies} icon={<BuildingIcon />} accent="green" />
+        <KpiCard label="Locations" value={totalLocations} icon={<MapPinIcon />} accent="purple" />
+        <KpiCard label="Sources" value={totalSources} icon={<SourceIcon />} accent="orange" />
+      </section>
+
+      <section className="dashboard__secondary-stats">
         <StatTile
           label="Strong matches"
           value={strongMatches.length}
@@ -67,12 +97,25 @@ export default function Dashboard() {
         <StatTile label="Average match score" value={`${averageScore.toFixed(1)}%`} />
       </section>
 
+      <section className="dashboard__charts">
+        <ChartCard title="Jobs by source">
+          <BarChart data={sourceGroups} unitLabel="jobs" />
+        </ChartCard>
+        <ChartCard title="Jobs by location">
+          <DonutChart data={locationGroups} total={totalJobs} unitLabel="jobs" />
+        </ChartCard>
+      </section>
+
       <section className="dashboard__panel">
-        <h2 className="dashboard__panel-title">Top-ranked jobs</h2>
-        {topJobs.length === 0 ? (
+        <h2 className="dashboard__panel-title">Recent job listings</h2>
+        <p className="dashboard__panel-caption">
+          Ordered by when each job was added to JobPilot AI's database, not by its original
+          posting date.
+        </p>
+        {recentJobs.length === 0 ? (
           <EmptyState message="No jobs are available yet. Run the job collection script to populate the dashboard." />
         ) : (
-          <JobPreviewList matches={topJobs} />
+          <JobListingsTable rows={recentJobs} />
         )}
       </section>
     </div>

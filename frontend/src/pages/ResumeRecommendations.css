@@ -4,12 +4,6 @@
   gap: 20px;
 }
 
-.resume-recommendations__intro h2 {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 12px;
-}
-
 .resume-recommendations__result {
   background: var(--surface-1);
   border: 1px solid var(--border);
@@ -35,6 +29,73 @@
   max-width: 70ch;
 }
 
+.resume-recommendations__leader-card {
+  background: var(--accent-wash);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.resume-recommendations__leader-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+
+.resume-recommendations__leader-headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.resume-recommendations__leader-variant {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.resume-recommendations__leader-points {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.resume-recommendations__leader-points-value {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.resume-recommendations__leader-points-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.resume-recommendations__leader-heading {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 10px;
+}
+
+.resume-recommendations__comparison-title {
+  font-size: var(--fs-lg, 16px);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 4px;
+}
+
 .resume-recommendations__points-note {
   font-size: 12px;
   color: var(--text-muted);
@@ -54,9 +115,11 @@
 }
 
 .resume-recommendations__variant-card {
+  background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 16px 18px;
 }
 
 .resume-recommendations__variant-card--leader {
@@ -68,12 +131,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .resume-recommendations__variant-header h4 {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--fs-lg, 16px);
+  font-weight: 700;
   color: var(--text-primary);
 }
 
@@ -89,18 +153,19 @@
 .resume-recommendations__overall-limitations {
   margin: 0;
   padding-left: 18px;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--text-secondary);
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .resume-recommendations__limitations,
 .resume-recommendations__overall-limitations {
   color: var(--text-muted);
   font-style: italic;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .resume-recommendations__overall-limitations {

@@ -1,12 +1,13 @@
 import { NavLink } from "react-router-dom";
+import { DashboardIcon, SearchIcon, StarIcon, ResumeIcon, InsightsIcon } from "./icons";
 import "./Sidebar.css";
 
 const NAV_ITEMS = [
-  { to: "/", label: "Dashboard", icon: "▦" },
-  { to: "/discover", label: "Discover Jobs", icon: "⌕" },
-  { to: "/matches", label: "Job Matches", icon: "★" },
-  { to: "/resumes", label: "Resume Recommendations", icon: "☰" },
-  { to: "/insights", label: "AI Insights", icon: "✨" },
+  { to: "/", label: "Dashboard", Icon: DashboardIcon },
+  { to: "/discover", label: "Discover Jobs", Icon: SearchIcon },
+  { to: "/matches", label: "Job Matches", Icon: StarIcon },
+  { to: "/resumes", label: "Resume Recommendations", Icon: ResumeIcon },
+  { to: "/insights", label: "AI Insights", Icon: InsightsIcon },
 ];
 
 export default function Sidebar({ open, onNavigate }) {
@@ -21,18 +22,16 @@ export default function Sidebar({ open, onNavigate }) {
 
       <nav className="sidebar__nav" aria-label="Primary">
         <ul>
-          {NAV_ITEMS.map((item) => (
-            <li key={item.to}>
+          {NAV_ITEMS.map(({ to, label, Icon }) => (
+            <li key={to}>
               <NavLink
-                to={item.to}
+                to={to}
                 className={({ isActive }) => `sidebar__link ${isActive ? "sidebar__link--active" : ""}`}
                 onClick={onNavigate}
-                end={item.to === "/"}
+                end={to === "/"}
               >
-                <span className="sidebar__icon" aria-hidden="true">
-                  {item.icon}
-                </span>
-                <span>{item.label}</span>
+                <Icon className="sidebar__icon" />
+                <span>{label}</span>
               </NavLink>
             </li>
           ))}

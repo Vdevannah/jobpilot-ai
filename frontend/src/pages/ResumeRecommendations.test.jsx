@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -108,8 +108,12 @@ describe("ResumeRecommendations", () => {
     await userEvent.click(screen.getByRole("button", { name: /get resume recommendation/i }));
 
     expect(await screen.findByText(/highest ranking points: data/i)).toBeInTheDocument();
-    expect(screen.getByText("data reason")).toBeInTheDocument();
-    expect(screen.getByText("data limitation")).toBeInTheDocument();
+    // "data reason"/"data limitation" now appear twice (the prominent
+    // recommended-resume card, and the full comparison list below it) --
+    // scope to the comparison list specifically.
+    const comparisonList = document.querySelector(".resume-recommendations__rankings");
+    expect(within(comparisonList).getByText("data reason")).toBeInTheDocument();
+    expect(within(comparisonList).getByText("data limitation")).toBeInTheDocument();
     expect(screen.getByText(/pending review/i)).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(/requires human review/i);
     expect(screen.getByRole("status")).toHaveTextContent(/not personalized/i);
@@ -124,9 +128,11 @@ describe("ResumeRecommendations", () => {
     await userEvent.selectOptions(select, "1");
     await userEvent.click(screen.getByRole("button", { name: /get resume recommendation/i }));
 
-    expect(await screen.findByText("Ranking points: 11")).toBeInTheDocument();
-    expect(screen.getByText("Ranking points: 4")).toBeInTheDocument();
-    expect(screen.getByText("Ranking points: 2")).toBeInTheDocument();
+    await screen.findByText("Resume comparison");
+    const comparisonList = document.querySelector(".resume-recommendations__rankings");
+    expect(within(comparisonList).getByText("Ranking points: 11")).toBeInTheDocument();
+    expect(within(comparisonList).getByText("Ranking points: 4")).toBeInTheDocument();
+    expect(within(comparisonList).getByText("Ranking points: 2")).toBeInTheDocument();
     expect(screen.queryByText(/^score:/i)).not.toBeInTheDocument();
     expect(
       screen.getByText(/phase 7 deterministic resume-selection algorithm/i),
@@ -203,5 +209,108 @@ describe("ResumeRecommendations", () => {
 
     const select = await screen.findByLabelText(/select a discovered job/i);
     expect(select).toHaveValue("2");
+  });
+
+  it("shows the page heading and subtitle", async () => {
+    vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Resume Recommendations" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Compare resume variants recommended for each opportunity."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the selected job's available context (title, company, location) as soon as it is chosen", async () => {
+    vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+    renderPage();
+
+    const select = await screen.findByLabelText(/select a discovered job/i);
+    await userEvent.selectOptions(select, "1");
+
+    expect(await screen.findByText("Data Engineer")).toBeInTheDocument();
+    expect(screen.getByText("Acme")).toBeInTheDocument();
+    expect(screen.getByText("NY")).toBeInTheDocument();
+  });
+
+  it("shows the career track in the job context only once the AI response actually returns one", async () => {
+    vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+    vi.spyOn(apiClient, "getResumeRecommendation").mockResolvedValue(SUCCESS_RESPONSE);
+    renderPage();
+
+    const select = await screen.findByLabelText(/select a discovered job/i);
+    await userEvent.selectOptions(select, "1");
+
+    const contextCard = document.querySelector(".job-context-card");
+    expect(within(contextCard).queryByText("Data")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /get resume recommendation/i }));
+    await screen.findByText("Resume comparison");
+
+    expect(within(contextCard).getByText("Data")).toBeInTheDocument();
+  });
+
+  it("shows a visually distinct recommended-resume card with the variant, reasons, and limitations", async () => {
+    vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+    vi.spyOn(apiClient, "getResumeRecommendation").mockResolvedValue(SUCCESS_RESPONSE);
+    renderPage();
+
+    const select = await screen.findByLabelText(/select a discovered job/i);
+    await userEvent.selectOptions(select, "1");
+    await userEvent.click(screen.getByRole("button", { name: /get resume recommendation/i }));
+
+    const leaderCard = await screen.findByText("Recommended resume");
+    const card = leaderCard.closest(".resume-recommendations__leader-card");
+    expect(within(card).getByText("Data")).toBeInTheDocument();
+    expect(within(card).getByText("11")).toBeInTheDocument();
+    expect(within(card).getByText("ranking points")).toBeInTheDocument();
+    expect(within(card).getByText("data reason")).toBeInTheDocument();
+    expect(within(card).getByText("data limitation")).toBeInTheDocument();
+  });
+
+  it("does not show a recommended-resume card when evidence is insufficient to pick one", async () => {
+    vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+    vi.spyOn(apiClient, "getResumeRecommendation").mockResolvedValue({
+      ...SUCCESS_RESPONSE,
+      recommendation: { ...SUCCESS_RESPONSE.recommendation, insufficient_evidence: true, recommended_variant: null },
+    });
+    renderPage();
+
+    const select = await screen.findByLabelText(/select a discovered job/i);
+    await userEvent.selectOptions(select, "1");
+    await userEvent.click(screen.getByRole("button", { name: /get resume recommendation/i }));
+
+    await screen.findByText(/no variant had enough matching evidence/i);
+    expect(screen.queryByText("Recommended resume")).not.toBeInTheDocument();
+  });
+
+  it("supports selecting a job and triggering the request entirely via the keyboard", async () => {
+    vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+    const recSpy = vi.spyOn(apiClient, "getResumeRecommendation").mockResolvedValue(SUCCESS_RESPONSE);
+    renderPage();
+
+    const select = await screen.findByLabelText(/select a discovered job/i);
+    select.focus();
+    await userEvent.selectOptions(select, "1");
+
+    const button = screen.getByRole("button", { name: /get resume recommendation/i });
+    button.focus();
+    expect(button).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() => expect(recSpy).toHaveBeenCalledWith("1"));
+  });
+
+  it("shows a single, non-repeated demo/human-review notice before any job is selected", async () => {
+    vi.spyOn(apiClient, "getJobs").mockResolvedValue(JOBS);
+    renderPage();
+
+    expect(await screen.findByText(/fictional demonstration data/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/requiring human review before any real application/i),
+    ).toBeInTheDocument();
+    // Exactly one top-level disclosure notice before any job/result exists --
+    // not a second, separate warning box repeating the same point.
+    expect(screen.getAllByRole("note")).toHaveLength(1);
   });
 });

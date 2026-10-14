@@ -6,8 +6,11 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import FilterField from "../components/FilterField";
 import Pagination from "../components/Pagination";
 import DemoRecordBadge from "../components/DemoRecordBadge";
+import PageHeader from "../components/PageHeader";
 import { LoadingState, ErrorState, EmptyState } from "../components/AsyncState";
+import { BuildingIcon, MapPinIcon, SourceIcon } from "../components/icons";
 import { isDemoRecord } from "../utils/demoRecord";
+import { shouldShowPostingLink } from "../utils/postingLink";
 import "./DiscoverJobs.css";
 
 const PAGE_SIZE = 10;
@@ -62,6 +65,11 @@ export default function DiscoverJobs() {
 
   return (
     <div className="discover-jobs">
+      <PageHeader
+        title="Discover Opportunities"
+        subtitle="Explore job opportunities collected from company career pages."
+      />
+
       <form className="filter-bar" onSubmit={(event) => event.preventDefault()}>
         <FilterField label="Search title or company" htmlFor="discover-search">
           <input
@@ -107,22 +115,36 @@ export default function DiscoverJobs() {
             {pageJobs.map((job) => (
               <li key={job.id} className="job-card">
                 <div className="job-card__main">
-                  <Link to={`/jobs/${job.id}`} className="job-card__title" title="View full job details">
-                    {job.title}
-                    <span className="job-card__title-chevron" aria-hidden="true">
-                      &rsaquo;
-                    </span>
-                  </Link>
+                  <div className="job-card__title-row">
+                    <Link to={`/jobs/${job.id}`} className="job-card__title" title="View full job details">
+                      {job.title}
+                    </Link>
+                    {isDemoRecord(job) && <DemoRecordBadge />}
+                  </div>
                   <p className="job-card__meta">
-                    {job.company} &middot; {job.location}
+                    <span className="job-card__meta-item">
+                      <BuildingIcon className="job-card__meta-icon" />
+                      {job.company}
+                    </span>
+                    <span className="job-card__meta-item">
+                      <MapPinIcon className="job-card__meta-icon" />
+                      {job.location}
+                    </span>
+                    <span className="job-card__meta-item">
+                      <SourceIcon className="job-card__meta-icon" />
+                      {job.source}
+                    </span>
                   </p>
                 </div>
                 <div className="job-card__actions">
-                  {isDemoRecord(job) && <DemoRecordBadge />}
-                  <span className="job-card__source">{job.source}</span>
-                  <a href={job.url} target="_blank" rel="noreferrer" className="job-card__link">
-                    View posting ↗
-                  </a>
+                  <Link to={`/jobs/${job.id}`} className="job-card__view-link">
+                    View Details
+                  </Link>
+                  {shouldShowPostingLink(job) && (
+                    <a href={job.url} target="_blank" rel="noreferrer" className="job-card__posting-link">
+                      View Original Posting ↗
+                    </a>
+                  )}
                 </div>
               </li>
             ))}

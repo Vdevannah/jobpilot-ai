@@ -1,6 +1,6 @@
 import requests
 
-from src.utils import clean_html_text, is_us_location, matches_target_role
+from src.utils import extract_structured_text, is_us_location, matches_target_role
 
 
 def get_lever_jobs(site, company_name, target_roles):
@@ -21,15 +21,18 @@ def get_lever_jobs(site, company_name, target_roles):
         location = job["categories"]["location"]
 
         if is_us_location(location) and matches_target_role(title, target_roles):
-            description_parts = [job.get("descriptionPlain", "")]
+            description_blocks = []
+            plain_description = job.get("descriptionPlain", "").strip()
+            if plain_description:
+                description_blocks.append(plain_description)
             for item in job.get("lists", []):
-                section_text = item.get("text", "")
-                section_content = clean_html_text(item.get("content", ""))
-                if section_text:
-                    description_parts.append(section_text)
+                section_heading = item.get("text", "").strip()
+                if section_heading:
+                    description_blocks.append(section_heading)
+                section_content = extract_structured_text(item.get("content", ""))
                 if section_content:
-                    description_parts.append(section_content)
-            description = " ".join(" ".join(description_parts).split())
+                    description_blocks.append(section_content)
+            description = "\n\n".join(description_blocks)
 
             normalized_job = {
                 "title": title,

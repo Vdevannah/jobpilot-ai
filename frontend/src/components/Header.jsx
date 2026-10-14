@@ -1,4 +1,5 @@
 import StatusIndicator from "./StatusIndicator";
+import { MenuIcon } from "./icons";
 import "./Header.css";
 
 export default function Header({ title, onMenuClick, backendStatus }) {
@@ -10,7 +11,7 @@ export default function Header({ title, onMenuClick, backendStatus }) {
         onClick={onMenuClick}
         aria-label="Toggle navigation"
       >
-        <span aria-hidden="true">&#9776;</span>
+        <MenuIcon className="header__menu-icon" />
       </button>
 
       <h1 className="header__title">{title}</h1>

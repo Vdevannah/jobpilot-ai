@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getMatches } from "../api/client";
+import { getJobs, getMatches } from "../api/client";
 import { useApiQuery } from "../hooks/useApiQuery";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import FilterField from "../components/FilterField";
@@ -10,9 +10,12 @@ import TrackBadge from "../components/TrackBadge";
 import SkillSummary from "../components/SkillSummary";
 import Notice from "../components/Notice";
 import DemoRecordBadge from "../components/DemoRecordBadge";
+import PageHeader from "../components/PageHeader";
 import { LoadingState, ErrorState, EmptyState } from "../components/AsyncState";
+import { BuildingIcon, MapPinIcon, SourceIcon } from "../components/icons";
 import { SCORE_MEANING } from "../utils/scoreTier";
 import { isDemoRecord } from "../utils/demoRecord";
+import { withSourceFromJobs } from "../utils/jobSourceLookup";
 import "./JobMatches.css";
 
 const PAGE_SIZE = 10;
@@ -42,7 +45,10 @@ function sortMatches(matches, sortBy) {
     case "location":
       return sorted.sort((a, b) => a.location.localeCompare(b.location));
     case "source":
-      return sorted.sort((a, b) => a.source.localeCompare(b.source));
+      // source can be null when no corresponding job was found to join it
+      // from (see utils/jobSourceLookup) -- sort those to the end rather
+      // than crashing on a null .localeCompare call.
+      return sorted.sort((a, b) => (a.source ?? "zzz").localeCompare(b.source ?? "zzz"));
     case "track":
       return sorted.sort((a, b) => (a.job_track ?? "zzz").localeCompare(b.job_track ?? "zzz"));
     case "score":
@@ -79,6 +85,14 @@ export default function JobMatches() {
     [apiParams, retryToken],
   );
 
+  // GET /matches doesn't return a job's source (see utils/jobSourceLookup),
+  // so the complete /jobs list is fetched once here -- stable deps, not
+  // re-fetched on every filter change -- and joined in by job_id below.
+  // getJobs() with no limit/offset returns every job (src/api.py only
+  // slices when a limit is explicitly passed), so this join never misses a
+  // job to a pagination boundary.
+  const { data: allJobs } = useApiQuery(() => getJobs(), []);
+
   function updateFilter(setter) {
     return (event) => {
       setter(event.target.value);
@@ -88,9 +102,10 @@ export default function JobMatches() {
 
   const visibleMatches = useMemo(() => {
     if (!matches) return [];
-    const filtered = track === "unknown" ? matches.filter((match) => match.job_track == null) : matches;
+    const enriched = withSourceFromJobs(matches, allJobs);
+    const filtered = track === "unknown" ? enriched.filter((match) => match.job_track == null) : enriched;
     return sortMatches(filtered, sortBy);
-  }, [matches, track, sortBy]);
+  }, [matches, allJobs, track, sortBy]);
 
   const pageCount = Math.max(1, Math.ceil(visibleMatches.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
@@ -107,6 +122,11 @@ export default function JobMatches() {
 
   return (
     <div className="job-matches">
+      <PageHeader
+        title="Job Matches"
+        subtitle="Review deterministic compatibility scores based on available job information."
+      />
+
       <Notice tone="info">{SCORE_MEANING}</Notice>
 
       <form className="filter-bar" onSubmit={(event) => event.preventDefault()}>
@@ -190,13 +210,24 @@ export default function JobMatches() {
                       </span>
                     </Link>
                     <p className="match-card__meta">
-                      {match.company} &middot; {match.location} &middot; {match.source}
+                      <span className="match-card__meta-item">
+                        <BuildingIcon className="match-card__meta-icon" />
+                        {match.company}
+                      </span>
+                      <span className="match-card__meta-item">
+                        <MapPinIcon className="match-card__meta-icon" />
+                        {match.location}
+                      </span>
+                      <span className="match-card__meta-item">
+                        <SourceIcon className="match-card__meta-icon" />
+                        {match.source ?? "Source unavailable"}
+                      </span>
                     </p>
                   </div>
                   <div className="match-card__badges">
                     {isDemoRecord(match) && <DemoRecordBadge />}
                     <TrackBadge track={match.job_track} />
-                    <ScoreBadge score={match.overall_score} />
+                    <ScoreBadge score={match.overall_score} className="match-card__score" />
                   </div>
                 </div>
 

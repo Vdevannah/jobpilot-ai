@@ -1,13 +1,40 @@
 .dashboard {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-6);
 }
 
-.dashboard__stats {
+.dashboard__kpis {
+  /* Explicit breakpoints (1 / 2 / 4 columns) rather than auto-fit, which
+     can land on an awkward in-between column count at some widths. */
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .dashboard__kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard__kpis {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.dashboard__secondary-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
+  gap: var(--space-4);
+}
+
+.dashboard__charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
 }
 
 .dashboard__panel {
@@ -15,12 +42,18 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  padding: 20px 20px 8px;
+  padding: var(--space-5) var(--space-5) var(--space-2);
 }
 
 .dashboard__panel-title {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
+}
+
+.dashboard__panel-caption {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-bottom: var(--space-3);
 }

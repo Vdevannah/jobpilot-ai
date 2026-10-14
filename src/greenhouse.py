@@ -1,6 +1,6 @@
 import requests
 
-from src.utils import clean_html_text, is_us_location, matches_target_role
+from src.utils import extract_structured_text, is_us_location, matches_target_role
 
 
 def get_jobs(company, target_roles):
@@ -30,7 +30,7 @@ def get_jobs(company, target_roles):
                 detail_response = requests.get(detail_url)
                 detail_response.raise_for_status()
                 content = detail_response.json().get("content", "")
-                description = clean_html_text(content)
+                description = extract_structured_text(content)
             except requests.RequestException as error:
                 print(f"Greenhouse detail API error for {company} job {job['id']}: {error}")
                 description = ""

@@ -4,8 +4,10 @@ import { getAIReview, getJobs } from "../api/client";
 import { useApiQuery } from "../hooks/useApiQuery";
 import { useLazyRequest } from "../hooks/useLazyRequest";
 import JobPicker from "../components/JobPicker";
+import JobContextCard from "../components/JobContextCard";
 import AIResponseMeta from "../components/AIResponseMeta";
 import Notice from "../components/Notice";
+import PageHeader from "../components/PageHeader";
 import { LoadingState, ErrorState, EmptyState } from "../components/AsyncState";
 import { AI_JOB_TRACK_LABELS, RESUME_VARIANT_LABELS } from "../utils/aiLabels";
 import "./AIInsights.css";
@@ -44,17 +46,29 @@ export default function AIInsights() {
     return <ErrorState message={jobsError} />;
   }
 
+  const selectedJob = jobs.find((job) => String(job.id) === String(selectedJobId)) ?? null;
+  const trackLabel = data?.job_analysis?.job_track
+    ? AI_JOB_TRACK_LABELS[data.job_analysis.job_track] ?? data.job_analysis.job_track
+    : null;
+
   return (
     <div className="ai-insights">
-      <header className="ai-insights__intro">
-        <h2>AI Insights</h2>
-        <Notice tone="warning">
-          Mock job analysis below is fixed, pre-written sample output -- it does not read or
-          analyze the selected job's actual description. Research findings, critic warnings, and
-          resume evidence are all fictional demonstration data and have not been reviewed by a
-          human yet.
-        </Notice>
-      </header>
+      <PageHeader
+        title="AI Insights"
+        subtitle="Explore mock AI analysis of job requirements and potential fit."
+      />
+
+      <div className="ai-insights__mock-indicator">
+        <span className="ai-insights__mock-label">Mock AI Analysis</span>
+        <p>
+          This analysis uses JobPilot AI's mock workflow: fixed, pre-written sample output that
+          does not read or analyze the selected job's actual description -- not a live OpenAI
+          analysis of your personal resumes. Research findings and critic warnings below are
+          fictional demonstration data and have not been reviewed by a human yet. You must
+          independently verify the job requirements and this analysis before making any
+          application decisions.
+        </p>
+      </div>
 
       {jobs.length === 0 ? (
         <EmptyState message="No jobs are available yet. Run the job collection script to populate the dashboard." />
@@ -69,6 +83,8 @@ export default function AIInsights() {
           requestDisabled={isLoading}
         />
       )}
+
+      <JobContextCard job={selectedJob} trackLabel={trackLabel} />
 
       {status === "error" && <ErrorState message={error} onRetry={() => run(selectedJobId)} />}
 

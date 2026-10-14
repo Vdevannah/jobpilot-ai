@@ -7,10 +7,13 @@ import TrackBadge from "../components/TrackBadge";
 import SkillSummary from "../components/SkillSummary";
 import Notice from "../components/Notice";
 import DemoRecordBadge from "../components/DemoRecordBadge";
+import JobDescription from "../components/JobDescription";
 import { LoadingState, ErrorState } from "../components/AsyncState";
+import { BuildingIcon, MapPinIcon, SourceIcon } from "../components/icons";
 import { SCORE_MEANING } from "../utils/scoreTier";
 import { TRACK_LABELS } from "../utils/trackLabels";
 import { isDemoRecord } from "../utils/demoRecord";
+import { shouldShowPostingLink } from "../utils/postingLink";
 import "./JobDetail.css";
 
 const SCORE_ROWS = [
@@ -45,6 +48,15 @@ export default function JobDetail() {
 
   const trackLabel = match?.job_track ? TRACK_LABELS[match.job_track] ?? match.job_track : null;
 
+  // A short, single-line version of the same truthful conditions the full
+  // breakdown explains at length below -- never a new or different signal,
+  // just condensed for the compact summary near the top of the page.
+  const summaryLimitedEvidenceNote = !job.description
+    ? "Limited evidence: no job description was available for scoring."
+    : !trackLabel
+      ? "Limited evidence: no career track was detected for this job."
+      : null;
+
   return (
     <div className="job-detail">
       <Link to="/discover" className="job-detail__back">
@@ -57,12 +69,51 @@ export default function JobDetail() {
           {isDemoRecord(job) && <DemoRecordBadge />}
         </div>
         <p className="job-detail__meta">
-          {job.company} &middot; {job.location} &middot; {job.source}
+          <span className="job-detail__meta-item">
+            <BuildingIcon className="job-detail__meta-icon" />
+            {job.company}
+          </span>
+          <span className="job-detail__meta-item">
+            <MapPinIcon className="job-detail__meta-icon" />
+            {job.location}
+          </span>
+          {job.source ? (
+            <span className="job-detail__meta-item">
+              <SourceIcon className="job-detail__meta-icon" />
+              {job.source}
+            </span>
+          ) : null}
         </p>
-        <a href={job.url} target="_blank" rel="noreferrer" className="job-detail__posting-link">
-          View original posting ↗
-        </a>
+        {shouldShowPostingLink(job) && (
+          <a href={job.url} target="_blank" rel="noreferrer" className="job-detail__posting-link">
+            View original posting ↗
+          </a>
+        )}
       </header>
+
+      <section className="job-detail__summary" aria-label="Match summary">
+        {matchesLoading ? (
+          <LoadingState label="Loading match summary..." />
+        ) : !match ? (
+          <p className="job-detail__summary-unavailable">
+            No match information is available for this job yet.
+          </p>
+        ) : (
+          <>
+            <div className="job-detail__summary-main">
+              <ScoreBadge score={match.overall_score} />
+              <span className="job-detail__recommendation">{match.recommendation}</span>
+              <TrackBadge track={match.job_track} />
+            </div>
+            {summaryLimitedEvidenceNote && (
+              <p className="job-detail__summary-warning">{summaryLimitedEvidenceNote}</p>
+            )}
+          </>
+        )}
+        <a href="#match-breakdown" className="job-detail__summary-link">
+          View Full Match Breakdown ↓
+        </a>
+      </section>
 
       <nav className="job-detail__ai-links" aria-label="AI preview pages for this job">
         <Link to={`/resumes?jobId=${encodeURIComponent(jobId)}`} className="job-detail__ai-link">
@@ -76,21 +127,15 @@ export default function JobDetail() {
       <section className="job-detail__section">
         <h3 className="job-detail__section-title">Description</h3>
         {job.description ? (
-          <p className="job-detail__description">{job.description}</p>
+          <JobDescription text={job.description} />
         ) : (
-          <>
-            <p className="job-detail__description job-detail__description--empty">
-              No description is available for this job posting.
-            </p>
-            <Notice tone="warning">
-              Because no description is available, the match score below is based on limited job
-              information.
-            </Notice>
-          </>
+          <Notice tone="warning">
+            Job description is unavailable. Match scores may be based on limited information.
+          </Notice>
         )}
       </section>
 
-      <section className="job-detail__section">
+      <section id="match-breakdown" className="job-detail__section">
         <h3 className="job-detail__section-title">Match score breakdown</h3>
         {matchesLoading ? (
           <LoadingState label="Loading score breakdown..." />
